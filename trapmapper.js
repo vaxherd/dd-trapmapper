@@ -235,12 +235,17 @@ var bg_x = map.width/2;
 var bg_y = map.height/2;
 var mouse_trap = null;
 var clicked_trap = null;
-var click_x = 0;  // bg_[xy] at click time
+var click_x = 0;  // map_[xy] at click time
 var click_y = 0;
 window.addEventListener("mousemove", onMouseMove);
 window.addEventListener("mousedown", onMouseDown);
 window.addEventListener("mouseup", onMouseUp);
 window.addEventListener("wheel", onMouseWheel);
+
+// Prevent middle button paste on Linux when scrolling the map.
+window.addEventListener("auxclick", function(e) {
+    if (e.button==1) e.preventDefault();
+});
 
 ////////////////////////////////////////////////////////////////////////
 // Input callbacks
