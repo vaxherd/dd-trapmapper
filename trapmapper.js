@@ -78,10 +78,18 @@ class TrapMap
                 this.div_y = div_y;
             }
         }
-        this.image = new Two.Sprite(this.src, two.width/2, two.height/2, 1, 1);
+        // HACK: deal with async image loading
+        var this_ = this;
+        var texture = new Two.Texture(this.src, function() {
+            this_._finishConstructor();
+        });
+        this.image = new Two.Sprite(texture, two.width/2, two.height/2, 1, 1);
+    }
+    _finishConstructor() {
         this.width = this.image.texture.image.width;
         this.height = this.image.texture.image.height;
         this.image.scale = two.width / this.width;
+        two.update();
     }
 
     /* Iterate over all traps. */
