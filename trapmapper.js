@@ -9,6 +9,48 @@ function distance2(x1, y1, x2, y2)
     return (x2-x1)**2 + (y2-y1)**2;
 }
 
+
+/* Load/save logic based on https://github.com/GoogleChromeLabs/text-editor/ */
+
+/* Ask the user for a file to load, and call the given callback with the
+ * selected file's pathname and content.  If the user cancels the load,
+ * null will be passed for both callback arguments.  If the file cannot
+ * be loaded, the pathname will be passed normally and the data argument
+ * will be null. */
+function loadFile(callback)
+{
+    const fs_load = document.getElementById("fs_load");
+    fs_load.onchange = function(e) {
+        const file = fs_load.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.addEventListener("loadend", function(e) {
+                const data = e.srcElement.error ? null : e.srcElement.result;
+                callback(file.name, data);
+            });
+            reader.readAsText(file);
+        } else {
+            // FIXME: this is never reached; apparently there's no way to
+            // detect when the user clicks cancel?
+            // https://stackoverflow.com/questions/4628544/how-to-detect-when-cancel-is-clicked-on-file-input
+            callback(null, null);
+        }
+    };
+    fs_load.click();
+}
+
+/* Save the given data (a string) under the given pathname.  If `pathname`
+ * is null, ask the user where to save.  (The user-chosen pathname is not
+ * returned due to web API limitations.) */
+function saveFile(data, pathname)
+{
+    const fs_save = document.getElementById("fs_save");
+    const file = new File([data], "", {type: "text/plain"});
+    fs_save.href = window.URL.createObjectURL(file);
+    fs_save.setAttribute("download", pathname || "map.json");
+    fs_save.click();
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Trap data management
 
@@ -38,6 +80,8 @@ class Trap
         this.room_x = room_x;
         this.room_y = room_y;
         this.index = index;
+        this.icon = new Two.Circle(0, 0, 15, 32);  // Positioned by caller
+        this.icon.noStroke().fill = "rgba(255, 0, 0, 1.0)";
     }
 }
 
@@ -61,25 +105,26 @@ class TrapMap
              [2288,1344], [2672,1344], [3056,1344], [3440,1344], [3824,1344],
              [   0,   0], [ 624,1728], [1008,1728], [1392,1728], [   0,   0],
              [   0,   0], [2672,1728], [3056,1728], [3440,1728], [   0,   0]];
+    /* List of traps (Trap instances) per room, indexed by room ID */
+    room_traps = new Map();
     /* Image (Two.Sprite) instance */
     image = null;
+    /* Two.Group containing trap icons */
+    trap_group = null;
     /* Image size (for convenience) */
     width = 0;
     height = 0;
-    /* List of traps (Trap instances) per room, indexed by room ID */
-    room_traps = new Map();
 
-    constructor(data)
+    constructor()
     {
-        if (data) {
-            deserialize(data);
-        }
         // HACK: deal with async image loading
         var this_ = this;
         var texture = new Two.Texture(this.src, function() {
             this_._finishConstructor();
         });
         this.image = new Two.Sprite(texture, two.width/2, two.height/2, 1, 1);
+        two.add(this.image);
+        this.trap_group = two.makeGroup();
     }
     _finishConstructor() {
         this.width = this.image.texture.image.width;
@@ -101,6 +146,13 @@ class TrapMap
     {
         return [(x - this.image.position.x) / this.image.scale + this.width/2,
                 (y - this.image.position.y) / this.image.scale + this.height/2];
+    }
+
+    /* Convert background image coordinates to global (window) coordinates. */
+    toGlobal(x, y)
+    {
+        return [(x - this.width/2) * this.image.scale + this.image.position.x,
+                (y - this.height/2) * this.image.scale + this.image.position.y];
     }
 
     /* Adjust the map position by the given coordinate deltas. */
@@ -227,6 +279,9 @@ class TrapMap
         }
         const trap = new Trap(x, y, x-room_x, y-room_y, index);
         traps.push(trap);
+        [trap.icon.position.x, trap.icon.position.y] = this.toGlobal(x, y);
+        trap.icon.scale = this.image.scale;
+        this.trap_group.add(trap.icon);
         return trap;
     }
 
@@ -250,17 +305,24 @@ class TrapMap
         const data = JSON.parse(str);
         this.src = data.src;
         this.rooms = data.rooms;
+        two.remove(this.trap_group);
+        this.trap_group = two.makeGroup();
         this.room_traps = new Map();
+        const this_ = this;
         for (var room in data.traps) {
             const [cx, cy] = this.roomCenter(room);
             var traps = [];
             data.traps[room].forEach(function(trap_data) {
-                const [x, y, index] = trap_data;
+                const {x, y, index, color} = trap_data;
                 const trap = new Trap(x+cx, y+cy, x, y, index);
                 trap.color = color;
                 traps.push(trap);
+                [trap.icon.position.x, trap.icon.position.y] =
+                    this_.toGlobal(x+cx, y+cy);
+                trap.icon.scale = this_.image.scale;
+                this_.trap_group.add(trap.icon);
             });
-            this.room_traps[room] = traps;
+            this.room_traps.set(room, traps);
         }
     }
 }
@@ -274,9 +336,9 @@ const two = new Two({type: Two.Types.canvas,
                      autostart: true});
 two.appendTo(document.getElementById("container"));
 
-// Load map and trap data.
+// Initialize map and trap data.
 const map = new TrapMap();
-two.add(map.image);
+var map_pathname = null;
 
 // Set up mouse tracking and related state.  We track both the current
 // mouse position and the equivalent coordinates on the map image.
@@ -356,10 +418,8 @@ function onMouseDown(e)
         } else {
             const [x, y] = map.fromGlobal(e.clientX, e.clientY);
             clicked_trap = map.addTrap(x, y);
-            clicked_trap.icon = new Two.Circle(e.clientX, e.clientY, 15, 32);
-            clicked_trap.icon.noStroke().fill = "rgba(255, 0, 0, 0.4)";
-            clicked_trap.icon.scale = map.image.scale * 1.3;
-            two.add(clicked_trap.icon);
+            clicked_trap.icon.fill = "rgba(255, 0, 0, 0.4)";
+            clicked_trap.icon.scale *= 1.3;
         }
         click_x = bg_x;
         click_y = bg_y;
@@ -404,9 +464,27 @@ function onKeyPress(e)
         return;
     }
 
-    if (e.key == "S") {  // shift-S
+    if (e.key == "O") {  // shift-O
         e.preventDefault();
-        console.log(map.serialize());
+        loadFile(function(pathname, data) {
+            if (data === null) {
+                if (pathname) {
+                    alert("Failed to open file");
+                } else {
+                    alert("Operation cancelled");
+                }
+            } else {
+                mouse_trap = null;
+                clicked_trap = null;
+                map.deserialize(data);
+                map_pathname = pathname;
+            }
+        });
+
+    } else if (e.key == "S") {  // shift-S
+        e.preventDefault();
+        saveFile(map.serialize(), map_pathname);
+
     } else if (e.key == "?") {
         e.preventDefault();
         helpbox.classList.remove("hidden");
