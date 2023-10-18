@@ -412,6 +412,13 @@ function onMouseDown(e)
         return;
     }
 
+    /* Normally these will already be set by the mouse-move event, but if
+     * the user clicks before ever moving the mouse, we need to initialize
+     * these ourselves for proper trap placement. */
+    mouse_x = e.clientX;
+    mouse_y = e.clientY;
+    [bg_x, bg_y] = map.fromGlobal(mouse_x, mouse_y);
+
     if (e.button == 0) {
         if (mouse_trap) {
             clicked_trap = mouse_trap;
