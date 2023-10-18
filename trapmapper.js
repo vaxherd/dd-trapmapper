@@ -458,8 +458,12 @@ function onMouseWheel(e)
         return;
     }
 
+    // HACK: Accesing e.deltaY before e.deltaMode seems to force Firefox to
+    // always use PIXEL delta mode, so we do that here to avoid having to
+    // deal with LINE mode (which reportedly no other browser uses anyway).
+    const deltaY = e.deltaY;
     console.assert(e.deltaMode == WheelEvent.DOM_DELTA_PIXEL);
-    map.adjustScale(2 ** (e.deltaY/-500), mouse_x, mouse_y);
+    map.adjustScale(2 ** (deltaY/-500), mouse_x, mouse_y);
     two.update();
 }
 
