@@ -1,0 +1,50 @@
+body {
+	font-family: verdana, sans-serif;
+}
+
+p {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+p + p {
+	margin-top: 1em;
+}
+
+#container {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	background-color: black;
+}
+
+.helpbox {
+	z-index: 1;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: auto;
+	height: auto;
+	border-radius: 1em;
+	padding: 1em;
+	background-color: rgb(32,32,32);  /* Fallback if no alpha support */
+	background-color: rgba(32,32,32,0.9);
+	color: white;
+}
+
+table.keylist {
+	margin: 0.5em 1.5em;
+	padding: 0;
+	border: none;
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+table.keylist th {
+	color: yellow;
+	text-align: right;
+}
+
+.hidden {
+	display: none !important;
+}

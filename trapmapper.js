@@ -69,14 +69,10 @@ class TrapMap
     /* List of traps (Trap instances) per room, indexed by room ID */
     room_traps = new Map();
 
-    constructor(src, div_x, div_y)
+    constructor(data)
     {
-        if (src) {
-            this.src = src;
-            if (div_y) {
-                this.div_x = div_x;
-                this.div_y = div_y;
-            }
+        if (data) {
+            deserialize(data);
         }
         // HACK: deal with async image loading
         var this_ = this;
@@ -181,6 +177,19 @@ class TrapMap
         }
     }
 
+    /* Return the center coordinates of the given room. */
+    roomCenter(room)
+    {
+        const ab = room[0];
+        const row = room[1];
+        const col = room[2];
+        console.assert(ab == "A" || ab == "B");
+        console.assert(row >= "1" && row <= "5");
+        console.assert(col >= "1" && col <= "5");
+        const room_index = (row-1)*10 + (ab=="A" ? 0 : 5) + (col-1);
+        return this.rooms[room_index];
+    }
+
     /* Find the trap closest to the given point.  Returns null if there are
      * no traps in the room associated with the point. */
     getTrap(x, y)
@@ -220,6 +229,40 @@ class TrapMap
         traps.push(trap);
         return trap;
     }
+
+    /* Serialize map/trap data into a string. */
+    serialize()
+    {
+        var data = {src: this.src, rooms: this.rooms, traps: {}};
+        this.room_traps.forEach(function(traps, room) {
+            data.traps[room] = [];
+            traps.forEach(function(trap) {
+                data.traps[room].push({x: trap.room_x, y: trap.room_y,
+                                       index: trap.index, color: trap.color});
+            });
+        });
+        return JSON.stringify(data);
+    }
+
+    /* Deserialize map/trap data from a string. */
+    deserialize(str)
+    {
+        const data = JSON.parse(str);
+        this.src = data.src;
+        this.rooms = data.rooms;
+        this.room_traps = new Map();
+        for (var room in data.traps) {
+            const [cx, cy] = this.roomCenter(room);
+            var traps = [];
+            data.traps[room].forEach(function(trap_data) {
+                const [x, y, index] = trap_data;
+                const trap = new Trap(x+cx, y+cy, x, y, index);
+                trap.color = color;
+                traps.push(trap);
+            });
+            this.room_traps[room] = traps;
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -229,7 +272,7 @@ class TrapMap
 const two = new Two({type: Two.Types.canvas,
                      fullscreen: true,
                      autostart: true});
-two.appendTo(document.body);
+two.appendTo(document.getElementById("container"));
 
 // Load map and trap data.
 const map = new TrapMap();
@@ -249,6 +292,7 @@ window.addEventListener("mousemove", onMouseMove);
 window.addEventListener("mousedown", onMouseDown);
 window.addEventListener("mouseup", onMouseUp);
 window.addEventListener("wheel", onMouseWheel);
+window.addEventListener("keypress", onKeyPress);
 
 // Prevent middle button paste on Linux when scrolling the map.
 window.addEventListener("auxclick", function(e) {
@@ -260,6 +304,11 @@ window.addEventListener("auxclick", function(e) {
 
 function onMouseMove(e)
 {
+    var helpbox = document.getElementById("help");
+    if (!helpbox.classList.contains("hidden")) {
+        return;
+    }
+
     mouse_x = e.clientX;
     mouse_y = e.clientY;
     [bg_x, bg_y] = map.fromGlobal(mouse_x, mouse_y);
@@ -295,6 +344,12 @@ function onMouseMove(e)
 
 function onMouseDown(e)
 {
+    var helpbox = document.getElementById("help");
+    if (!helpbox.classList.contains("hidden")) {
+        helpbox.classList.add("hidden");
+        return;
+    }
+
     if (e.button == 0) {
         if (mouse_trap) {
             clicked_trap = mouse_trap;
@@ -314,24 +369,48 @@ function onMouseDown(e)
 function onMouseUp(e)
 {
     if (e.button == 0) {
-        if (!mouse_trap) {
-            clicked_trap.icon.fill = "rgba(255, 0, 0, 1.0)";
-            two.update();
+        if (clicked_trap) {
+            if (!mouse_trap) {
+                clicked_trap.icon.fill = "rgba(255, 0, 0, 1.0)";
+                two.update();
+            }
+            clicked_trap.x += bg_x - click_x;
+            clicked_trap.y += bg_y - click_y;
+            clicked_trap.room_x += bg_x - click_x;
+            clicked_trap.room_y += bg_y - click_y;
+            mouse_trap = clicked_trap;
+            clicked_trap = null;
         }
-        clicked_trap.x += bg_x - click_x;
-        clicked_trap.y += bg_y - click_y;
-        clicked_trap.room_x += bg_x - click_x;
-        clicked_trap.room_y += bg_y - click_y;
-        mouse_trap = clicked_trap;
-        clicked_trap = null;
     }
 }
 
 function onMouseWheel(e)
 {
-    // assert(e.deltaMode == WheelEvent.DOM_DELTA_PIXEL);
+    var helpbox = document.getElementById("help");
+    if (!helpbox.classList.contains("hidden")) {
+        return;
+    }
+
+    console.assert(e.deltaMode == WheelEvent.DOM_DELTA_PIXEL);
     map.adjustScale(2 ** (e.deltaY/-500), mouse_x, mouse_y);
     two.update();
+}
+
+function onKeyPress(e)
+{
+    var helpbox = document.getElementById("help");
+    if (!helpbox.classList.contains("hidden")) {
+        helpbox.classList.add("hidden");
+        return;
+    }
+
+    if (e.key == "S") {  // shift-S
+        e.preventDefault();
+        console.log(map.serialize());
+    } else if (e.key == "?") {
+        e.preventDefault();
+        helpbox.classList.remove("hidden");
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
