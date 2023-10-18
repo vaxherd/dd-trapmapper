@@ -91,8 +91,11 @@ class Trap
 /* Class encapsulating a background image and room divisions for a map. */
 class TrapMap
 {
+    /* Base pathname for image files */
+    basePath = "./";
     /* Source image location */
-    src = "./data/default-bg.png";
+    DEFAULT_SRC = "./data/default-bg.png";
+    src = "";
     /* Coordinates of room centers: list of 50 coordinate pairs, row-major.
      * Corner rooms (A11, A15, ...) are ignored */
     rooms = [[   0,   0], [ 624, 192], [1008, 192], [1392, 192], [   0,   0],
@@ -117,20 +120,43 @@ class TrapMap
 
     constructor()
     {
-        // HACK: deal with async image loading
-        var this_ = this;
-        var texture = new Two.Texture(this.src, function() {
-            this_._finishConstructor();
-        });
+        var texture = new Two.Texture(document.getElementById("blank_map"));
         this.image = new Two.Sprite(texture, two.width/2, two.height/2, 1, 1);
-        two.add(this.image);
-        this.trap_group = two.makeGroup();
-    }
-    _finishConstructor() {
         this.width = this.image.texture.image.width;
         this.height = this.image.texture.image.height;
         this.image.scale = two.width / this.width;
-        two.update();
+        two.add(this.image);
+        this.setBackground(null);
+        this.trap_group = two.makeGroup();
+    }
+
+    /* Set the background image (null for the default background image).
+     * The image will be loaded asynchronously.  If `relative` is true,
+     * `src` is treated as relative to `this.basePath`.*/
+    setBackground(src, relative)
+    {
+        if (relative) {
+            this.src = this.basePath + src;
+        } else {
+            this.src = src || this.DEFAULT_SRC;
+        }
+        const this_ = this;
+        this._new_texture = new Two.Texture(this.src, function() {
+            const texture = this_._new_texture;
+            this_.image.texture = texture;
+            this_.width = texture.image.width;
+            this_.height = texture.image.height;
+            this_.image.scale = two.width / this_.width;
+            two.update();
+        });
+    }
+
+    /* Clear all traps. */
+    clear()
+    {
+        two.remove(this.trap_group);
+        this.trap_group = two.makeGroup();
+        this.room_traps = new Map();
     }
 
     /* Iterate over all traps. */
@@ -288,7 +314,8 @@ class TrapMap
     /* Serialize map/trap data into a string. */
     serialize()
     {
-        var data = {src: this.src, rooms: this.rooms, traps: {}};
+        var data = {basePath: this.basePath, src: this.src, rooms: this.rooms,
+                    traps: {}};
         this.room_traps.forEach(function(traps, room) {
             data.traps[room] = [];
             traps.forEach(function(trap) {
@@ -303,11 +330,12 @@ class TrapMap
     deserialize(str)
     {
         const data = JSON.parse(str);
-        this.src = data.src;
+        this.clear();
+        if (data.basePath) {
+            this.basePath = data.basePath;
+        }
+        this.setBackground(data.src);
         this.rooms = data.rooms;
-        two.remove(this.trap_group);
-        this.trap_group = two.makeGroup();
-        this.room_traps = new Map();
         const this_ = this;
         for (var room in data.traps) {
             const [cx, cy] = this.roomCenter(room);
@@ -475,8 +503,11 @@ function onKeyPress(e)
         return;
     }
 
-    if (e.key == "O") {  // shift-O
-        e.preventDefault();
+    if (e.key == "B") {  // shift-B
+        map.clear();
+        map.setBackground(null);
+
+    } else if (e.key == "L") {  // shift-L
         loadFile(function(pathname, data) {
             if (data === null) {
                 if (pathname) {
@@ -492,12 +523,20 @@ function onKeyPress(e)
             }
         });
 
+    } else if (e.key == "M") {  // shift-M
+        const bg_load = document.getElementById("bg_load");
+        bg_load.onchange = function(e) {
+            const file = bg_load.files[0];
+            if (file) {
+                map.setBackground(file.name, true);
+            }
+        };
+        bg_load.click();
+
     } else if (e.key == "S") {  // shift-S
-        e.preventDefault();
         saveFile(map.serialize(), map_pathname);
 
     } else if (e.key == "?") {
-        e.preventDefault();
         helpbox.classList.remove("hidden");
     }
 }
