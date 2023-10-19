@@ -215,8 +215,8 @@ class TrapMap
         //    pos2 = xy - ((xy*scale2 - pos1*scale2) / scale1)
         //    pos2 = xy - ((xy - pos1) * scale2 / scale1)
         const zoom = this.image.scale / old_scale;
-        const new_x = mouse_x - ((mouse_x - map.image.position.x) * zoom);
-        const new_y = mouse_y - ((mouse_y - map.image.position.y) * zoom);
+        const new_x = x - ((x - this.image.position.x) * zoom);
+        const new_y = y - ((y - this.image.position.y) * zoom);
         this.image.position.x = new_x;
         this.image.position.y = new_y;
         const w2 = this.width / 2;
