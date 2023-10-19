@@ -111,6 +111,29 @@ class Trap
     {
         this._icon_index.opacity = visible ? 1.0 : 0.0;
     }
+
+    /* Set whether to display the icon in "hover" state (enlarged). */
+    setHover(hover)
+    {
+        this.icon.scale = hover ? 1.3 : 1.0;
+    }
+
+    /* Set whether to display the icon in "drag" state (translucent). */
+    setDrag(drag)
+    {
+        this.icon.opacity = drag ? 0.4 : 1.0;
+    }
+
+    /* Move trap by the given amount, in background image coordinates. */
+    move(dx, dy)
+    {
+        this.x += dx;
+        this.y += dy;
+        this.room_x += dx;
+        this.room_y += dy;
+        this.icon.position.x = this.x;
+        this.icon.position.y = this.y;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -504,8 +527,6 @@ window.addEventListener("keypress", onKeyPress);
 var show_indexes = false; // Show trap index numbers?
 var mouse_trap = null;    // Trap over which the mouse is hovering
 var clicked_trap = null;  // Trap which is currently grabbed
-var click_x = 0;  // bg_[xy] at click time
-var click_y = 0;
 var edit_rooms = false;   // Editing room positions (true) or traps (false)?
 var mouse_room = null;    // ID of room over which the mouse is hovering
 var clicked_room = null;  // ID of room which is currently grabbed
@@ -531,7 +552,6 @@ function onMouseMove(e)
 
     if (e.buttons & 4) {
         map.adjustPosition(e.movementX, e.movementY);
-        two.update();
     }
 
     if (e.buttons & 1) {
@@ -543,8 +563,8 @@ function onMouseMove(e)
             }
         } else {
             if (clicked_trap) {
-                clicked_trap.icon.position.x += e.movementX / map.scale();
-                clicked_trap.icon.position.y += e.movementY / map.scale();
+                clicked_trap.move(e.movementX / map.scale(),
+                                  e.movementY / map.scale());
                 two.update();
             }
         }
@@ -564,6 +584,7 @@ function onMouseMove(e)
                 if (room) {
                     map.room_icons.get(room).scale = 1.3;
                 }
+                two.update();
             }
             mouse_room = room;
         } else {
@@ -576,11 +597,12 @@ function onMouseMove(e)
             }
             if (mouse_trap !== trap) {
                 if (mouse_trap) {
-                    mouse_trap.icon.scale = 1;
+                    mouse_trap.setHover(false);
                 }
                 if (trap) {
-                    trap.icon.scale = 1.3;
+                    trap.setHover(true);
                 }
+                two.update();
             }
             mouse_trap = trap;
         }
@@ -608,13 +630,11 @@ function onMouseDown(e)
                 clicked_trap = mouse_trap;
             } else {
                 clicked_trap = map.addTrap(bg_x, bg_y);
-                clicked_trap.icon.scale = 1.3;
+                clicked_trap.setHover(true);
             }
-            clicked_trap.icon.opacity = 0.4;
+            clicked_trap.setDrag(true);
             two.update();
         }
-        click_x = bg_x;
-        click_y = bg_y;
     }
 }
 
@@ -624,10 +644,6 @@ function onMouseUp(e)
         if (clicked_trap) {
             clicked_trap.icon.opacity = 1;
             two.update();
-            clicked_trap.x += bg_x - click_x;
-            clicked_trap.y += bg_y - click_y;
-            clicked_trap.room_x += bg_x - click_x;
-            clicked_trap.room_y += bg_y - click_y;
             mouse_trap = clicked_trap;
             clicked_trap = null;
         }
@@ -677,6 +693,7 @@ function onKeyPress(e)
                 map_pathname = pathname;
                 edit_rooms = false;
                 map.setEditRoomsMode(false);
+                two.update();
             }
         });
 
@@ -697,6 +714,7 @@ function onKeyPress(e)
             edit_rooms = false;
         }
         map.setEditRoomsMode(edit_rooms);
+        two.update();
 
     } else if (e.key == "S") {  // shift-S
         saveFile(map.serialize(), map_pathname);
@@ -704,6 +722,7 @@ function onKeyPress(e)
     } else if (e.key == "#") {
         show_indexes = !show_indexes;
         map.setTrapIndexVisible(show_indexes);
+        two.update();
 
     } else if (e.key == "?") {
         helpbox.classList.remove("hidden");
