@@ -10,14 +10,18 @@ p + p {
 	margin-top: 1em;
 }
 
-#container {
+.hidden {
+	display: none !important;
+}
+
+div#container {
 	position: fixed;
 	width: 100%;
 	height: 100%;
 	background-color: black;
 }
 
-.helpbox {
+div.helpbox {
 	z-index: 10;
 	position: fixed;
 	top: 50%;
@@ -32,7 +36,7 @@ p + p {
 	color: white;
 }
 
-.imagebox {
+div.imagebox {
 	z-index: 1;
 	position: fixed;
 	width: auto;
@@ -40,6 +44,61 @@ p + p {
 	border: solid white 2px;
 	padding: 0;
 	background-color: black;
+}
+
+div.editbox {
+	z-index: 1;
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: auto;
+	height: auto;
+	border: solid white 2px;
+	padding: 5px;
+	background-color: black;
+}
+
+div.imagelist {
+	display: flex;
+	white-space: pre;
+	align-items: center;
+	vertical-align: middle;
+}
+
+div.imagelist img {
+	margin: 3px;
+}
+
+div.buttonholder {
+	display: inline-block;
+	height: 100%;
+}
+
+div.button {
+	display: block;
+	width: auto;
+	height: auto;
+        font-size: 60%;
+	border: 1px solid rgb(56,56,56);
+	padding: 0.5em;
+	border-radius: 0.5em;
+	background-color: rgb(224,224,224);
+	color: black;
+	cursor: pointer;
+}
+
+div.button:hover {
+	background-color: rgb(255,255,255);
+}
+
+div.button.red {
+	border-color: rgb(63,21,21);
+	background-color: rgb(255,85,85);
+}
+
+div.button.red:hover {
+	background-color: rgb(255,112,112);
 }
 
 table.keylist {
@@ -54,8 +113,4 @@ table.keylist {
 table.keylist th {
 	color: yellow;
 	text-align: right;
-}
-
-.hidden {
-	display: none !important;
 }

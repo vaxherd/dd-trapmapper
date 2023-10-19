@@ -10,6 +10,42 @@ function distance2(x1, y1, x2, y2)
 }
 
 
+/* Set the size of an <IMG> element to a width 20% of the screen width and
+ * a height assuming a 16:9 aspect ratio. */
+function setImageSize(img)
+{
+    img.width = two.width * 0.2;
+    img.height = img.width * (9/16);
+}
+
+
+/* Refresh the contents of the edit box for the given trap. */
+function refreshEditBox(trap)
+{
+    for (var i = 0; i < 3; i++) {
+        if (i < trap.images.length) {
+            dom_edit_image[i].classList.remove("hidden");
+            dom_edit_image[i].src = map.basePath + trap.images[i];
+        } else {
+            dom_edit_image[i].classList.add("hidden");
+        }
+    }
+    if (trap.images.length < 3) {
+        dom_edit_image_add_holder.classList.remove("hidden");
+    } else {
+        dom_edit_image_add_holder.classList.add("hidden");
+    }
+    if (trap.hoard) {
+        dom_edit_hoard.classList.remove("hidden");
+        dom_edit_hoard.src = map.basePath + trap.hoard;
+        dom_edit_hoard_add_holder.classList.add("hidden");
+    } else {
+        dom_edit_hoard.classList.add("hidden");
+        dom_edit_hoard_add_holder.classList.remove("hidden");
+    }
+}
+
+
 /* Load/save logic based on https://github.com/GoogleChromeLabs/text-editor/ */
 
 /* Ask the user for a file to load, and call the given callback with the
@@ -68,9 +104,9 @@ class Trap
     color = 0;
     /* Trap icon (Two.Group) */
     icon = null;
-    /* Trap images (image URL strings) */
+    /* Trap images (image filename strings) */
     images = [];
-    /* Hoard image (image URL string), null if none */
+    /* Hoard image (image filename string), null if none */
     hoard = null;
 
     /* Base trap icon (internal) */
@@ -371,6 +407,23 @@ class TrapMap
         return trap;
     }
 
+    /* Remove the given trap. */
+    removeTrap(trap)
+    {
+        var room = null;
+        this.room_traps.forEach(function(traps, r) {
+            const index = traps.indexOf(trap);
+            if (index >= 0) {
+                console.assert(room == null);
+                room = r;
+                traps.splice(index, 1);
+            }
+        });
+        console.assert(room != null);
+        console.assert(this.room_traps.get(room).indexOf(trap) < 0);
+        this.trap_group.remove(trap.icon);
+    }
+
     /* Toggle trap index numbers on or off. */
     setTrapIndexVisible(visible)
     {
@@ -418,7 +471,8 @@ class TrapMap
             data.traps[room] = [];
             traps.forEach(function(trap) {
                 data.traps[room].push({x: trap.room_x, y: trap.room_y,
-                                       index: trap.index, color: trap.color});
+                                       index: trap.index, color: trap.color,
+                                       images: trap.images, hoard: trap.hoard});
             });
         });
         return JSON.stringify(data);
@@ -439,9 +493,11 @@ class TrapMap
             const [cx, cy] = this.roomCenter(room);
             var traps = [];
             data.traps[room].forEach(function(trap_data) {
-                const {x, y, index, color} = trap_data;
+                const {x, y, index, color, images, hoard} = trap_data;
                 const trap = new Trap(x+cx, y+cy, x, y, index);
                 trap.color = color;
+                trap.images = images;
+                trap.hoard = hoard;
                 traps.push(trap);
                 this_.trap_group.add(trap.icon);
             });
@@ -506,12 +562,25 @@ const dom_container = document.getElementById("container");
 const dom_helpbox = document.getElementById("help");
 const dom_popup_image = document.getElementById("popup_image");
 const dom_popup_image_img = document.getElementById("popup_image_img");
+const dom_editbox = document.getElementById("edit");
+const dom_edit_image = [document.getElementById("edit_image1"),
+                        document.getElementById("edit_image2"),
+                        document.getElementById("edit_image3")];
+const dom_edit_image_add_holder = document.getElementById("edit_image_add_holder");
+const dom_edit_hoard = document.getElementById("edit_hoard");
+const dom_edit_hoard_add_holder = document.getElementById("edit_hoard_add_holder");
+const dom_img_load = document.getElementById("img_load");
 
 // Create base canvas.
 const two = new Two({type: Two.Types.canvas,
                      fullscreen: true,
                      autostart: true});
 two.appendTo(dom_container);
+
+// Configure various element sizes based on the canvas size.
+setImageSize(dom_popup_image_img);
+dom_edit_image.forEach(function(elem) {setImageSize(elem);});
+setImageSize(dom_edit_hoard);
 
 // Initialize map and trap data.
 const map = new TrapMap();
@@ -527,12 +596,18 @@ window.addEventListener("mousemove", onMouseMove);
 window.addEventListener("mousedown", onMouseDown);
 window.addEventListener("mouseup", onMouseUp);
 window.addEventListener("wheel", onMouseWheel);
+
+// Set up other input event handlers.
 window.addEventListener("keypress", onKeyPress);
+document.getElementById("edit_image_add").addEventListener("click", onAddTrapImage);
+document.getElementById("edit_hoard_add").addEventListener("click", onAddHoardImage);
+document.getElementById("edit_delete").addEventListener("click", onDeleteTrap);
 
 // Initialize editing state.
 var show_indexes = false; // Show trap index numbers?
 var mouse_trap = null;    // Trap over which the mouse is hovering
 var clicked_trap = null;  // Trap which is currently grabbed
+var edit_trap = null;     // Trap which is being edited
 var edit_rooms = false;   // Editing room positions (true) or traps (false)?
 var mouse_room = null;    // ID of room over which the mouse is hovering
 var clicked_room = null;  // ID of room which is currently grabbed
@@ -547,13 +622,16 @@ window.addEventListener("auxclick", function(e) {
 
 function onMouseMove(e)
 {
-    if (!dom_helpbox.classList.contains("hidden")) {
-        return;
-    }
-
     mouse_x = e.clientX;
     mouse_y = e.clientY;
     [bg_x, bg_y] = map.fromGlobal(mouse_x, mouse_y);
+
+    if (!dom_helpbox.classList.contains("hidden")) {
+        return;
+    }
+    if (edit_trap) {
+        return;
+    }
 
     if (e.buttons & 4) {
         map.adjustPosition(e.movementX, e.movementY);
@@ -608,11 +686,16 @@ function onMouseMove(e)
                 if (trap) {
                     trap.setHover(true);
                     dom_popup_image_img.src = "./A12-1.png";  // FIXME: dummy path
-                    dom_popup_image_img.width = two.width * 0.2;
-                    dom_popup_image_img.height = dom_popup_image_img.width * (9/16);
                     const [tx, ty] = map.toGlobal(trap.x, trap.y);
-                    dom_popup_image.style.left = (tx + 15*1.3*map.scale() + 5) + "px";
-                    dom_popup_image.style.top = (ty) + "px";
+                    const offset = 15*1.3*map.scale() + 5;
+                    var left;
+                    if (tx > two.width*0.75) {
+                        left = tx - offset - (dom_popup_image_img.width + 4);
+                    } else {
+                        left = tx + offset;
+                    }
+                    dom_popup_image.style.left = left + "px";
+                    dom_popup_image.style.top = ty + "px";
                     dom_popup_image.classList.remove("hidden");
                 }
                 two.update();
@@ -622,13 +705,9 @@ function onMouseMove(e)
     }
 }
 
+
 function onMouseDown(e)
 {
-    if (!dom_helpbox.classList.contains("hidden")) {
-        dom_helpbox.classList.add("hidden");
-        return;
-    }
-
     // Normally these will already be set by the mouse-move event, but if
     // the user clicks before ever moving the mouse, we need to initialize
     // these ourselves for proper trap placement.
@@ -636,22 +715,53 @@ function onMouseDown(e)
     mouse_y = e.clientY;
     [bg_x, bg_y] = map.fromGlobal(mouse_x, mouse_y);
 
+    if (!dom_helpbox.classList.contains("hidden")) {
+        dom_helpbox.classList.add("hidden");
+        return;
+    }
+
+    if (edit_trap) {
+        const edit_rect = dom_editbox.getBoundingClientRect();
+        if (mouse_x < edit_rect.left || mouse_x > edit_rect.right
+         || mouse_y < edit_rect.top || mouse_y > edit_rect.bottom) {
+            dom_editbox.classList.add("hidden");
+            edit_trap.setHover(false);
+            edit_trap = null;
+        }
+        return;
+    }
+
     if (e.button == 0) {
         if (!edit_rooms) {
             if (mouse_trap) {
+                dom_popup_image.classList.add("hidden");
                 clicked_trap = mouse_trap;
             } else {
                 clicked_trap = map.addTrap(bg_x, bg_y);
+                clicked_trap.setIndexVisible(show_indexes);
                 clicked_trap.setHover(true);
             }
             clicked_trap.setDrag(true);
             two.update();
         }
+
+    } else if (e.button == 1) {
+        if (!edit_rooms && !edit_trap && mouse_trap) {
+            dom_popup_image.classList.add("hidden");
+            edit_trap = mouse_trap;
+            refreshEditBox(edit_trap);
+            dom_editbox.classList.remove("hidden");
+        }
     }
 }
 
+
 function onMouseUp(e)
 {
+    if (edit_trap) {
+        return;
+    }
+
     if (e.button == 0) {
         if (clicked_trap) {
             clicked_trap.icon.opacity = 1;
@@ -662,9 +772,13 @@ function onMouseUp(e)
     }
 }
 
+
 function onMouseWheel(e)
 {
     if (!dom_helpbox.classList.contains("hidden")) {
+        return;
+    }
+    if (edit_trap) {
         return;
     }
 
@@ -677,16 +791,28 @@ function onMouseWheel(e)
     two.update();
 }
 
+
 function onKeyPress(e)
 {
     if (!dom_helpbox.classList.contains("hidden")) {
         dom_helpbox.classList.add("hidden");
+        return;
+    } else if (e.key == "?") {
+        dom_helpbox.classList.remove("hidden");
+        return;
+    }
+
+    if (edit_trap) {
         return;
     }
 
     if (e.key == "B") {  // shift-B
         map.clearTraps();
         map.setBackground(null);
+        map_pathname = "";
+        edit_rooms = false;
+        map.setEditRoomsMode(false);
+        two.update();
 
     } else if (e.key == "L") {  // shift-L
         loadFile(function(pathname, data) {
@@ -708,14 +834,13 @@ function onKeyPress(e)
         });
 
     } else if (e.key == "M") {  // shift-M
-        const bg_load = document.getElementById("bg_load");
-        bg_load.onchange = function(e) {
-            const file = bg_load.files[0];
+        dom_img_load.onchange = function(e) {
+            const file = dom_img_load.files[0];
             if (file) {
                 map.setBackground(file.name, true);
             }
         };
-        bg_load.click();
+        dom_img_load.click();
 
     } else if (e.key == "R") {  // shift-R
         if (!edit_rooms) {
@@ -733,10 +858,41 @@ function onKeyPress(e)
         show_indexes = !show_indexes;
         map.setTrapIndexVisible(show_indexes);
         two.update();
-
-    } else if (e.key == "?") {
-        dom_helpbox.classList.remove("hidden");
     }
+}
+
+
+function onAddTrapImage(e)
+{
+    dom_img_load.onchange = function(e) {
+        const file = dom_img_load.files[0];
+        if (file) {
+            edit_trap.images.push(file.name);
+            refreshEditBox(edit_trap);
+        }
+    };
+    dom_img_load.click();
+}
+
+
+function onAddHoardImage(e)
+{
+    dom_img_load.onchange = function(e) {
+        const file = dom_img_load.files[0];
+        if (file) {
+            edit_trap.hoard = file.name;
+            refreshEditBox(edit_trap);
+        }
+    };
+    dom_img_load.click();
+}
+
+
+function onDeleteTrap(e)
+{
+    map.removeTrap(edit_trap);
+    dom_editbox.classList.add("hidden");
+    edit_trap = null;
 }
 
 ////////////////////////////////////////////////////////////////////////
