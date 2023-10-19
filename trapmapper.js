@@ -763,18 +763,28 @@ function onMouseMove(e)
                 }
                 if (trap) {
                     trap.setHover(true);
-                    dom_popup_image_img.src = "./A12-1.png";  // FIXME: dummy path
-                    const [tx, ty] = map.toGlobal(trap.x, trap.y);
-                    const offset = 15*1.3*map.scale() + 5;
-                    var left;
-                    if (tx > two.width*0.75) {
-                        left = tx - offset - (dom_popup_image_img.width + 4);
+                    var image;
+                    if (trap.images.length) {
+                        image = map.basePath + trap.images[0];
+                    } else if (trap.hoard) {
+                        image = map.basePath + trap.hoard;
                     } else {
-                        left = tx + offset;
+                        image = null;
                     }
-                    dom_popup_image.style.left = left + "px";
-                    dom_popup_image.style.top = ty + "px";
-                    dom_popup_image.classList.remove("hidden");
+                    if (image) {
+                        dom_popup_image_img.src = image;
+                        const [tx, ty] = map.toGlobal(trap.x, trap.y);
+                        const offset = 15*1.3*map.scale() + 5;
+                        var left;
+                        if (tx > two.width*0.75) {
+                            left = tx - offset - (dom_popup_image_img.width + 4);
+                        } else {
+                            left = tx + offset;
+                        }
+                        dom_popup_image.style.left = left + "px";
+                        dom_popup_image.style.top = ty + "px";
+                        dom_popup_image.classList.remove("hidden");
+                    }
                 }
                 two.update();
             }
