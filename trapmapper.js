@@ -25,7 +25,7 @@ function refreshEditBox(trap)
     for (var i = 0; i < 3; i++) {
         if (i < trap.images.length) {
             dom_edit_image[i].classList.remove("hidden");
-            dom_edit_image[i].src = map.basePath + trap.images[i];
+            dom_edit_image_img[i].src = map.basePath + trap.images[i];
         } else {
             dom_edit_image[i].classList.add("hidden");
         }
@@ -37,7 +37,7 @@ function refreshEditBox(trap)
     }
     if (trap.hoard) {
         dom_edit_hoard.classList.remove("hidden");
-        dom_edit_hoard.src = map.basePath + trap.hoard;
+        dom_edit_hoard_img.src = map.basePath + trap.hoard;
         dom_edit_hoard_add_holder.classList.add("hidden");
     } else {
         dom_edit_hoard.classList.add("hidden");
@@ -177,6 +177,17 @@ class Trap
     {
         this.images.push(filename);
         this._icon_base.opacity = 1.0;
+    }
+
+    /* Delete a trap image.  Updates the trap icon if no images are left. */
+    deleteImage(index)
+    {
+        console.assert(index >= 0);
+        console.assert(index < this.images.length);
+        this.images.splice(index, 1);
+        if (this.images.length == 0) {
+            this._icon_base.opacity = 0.5;
+        }
     }
 
     /* Set the hoard image (null to clear any previously set image).
@@ -582,8 +593,12 @@ const dom_editbox = document.getElementById("edit");
 const dom_edit_image = [document.getElementById("edit_image1"),
                         document.getElementById("edit_image2"),
                         document.getElementById("edit_image3")];
+const dom_edit_image_img = [document.getElementById("edit_image1_img"),
+                            document.getElementById("edit_image2_img"),
+                            document.getElementById("edit_image3_img")];
 const dom_edit_image_add_holder = document.getElementById("edit_image_add_holder");
 const dom_edit_hoard = document.getElementById("edit_hoard");
+const dom_edit_hoard_img = document.getElementById("edit_hoard_img");
 const dom_edit_hoard_add_holder = document.getElementById("edit_hoard_add_holder");
 const dom_img_load = document.getElementById("img_load");
 
@@ -595,8 +610,8 @@ two.appendTo(dom_container);
 
 // Configure various element sizes based on the canvas size.
 setImageSize(dom_popup_image_img);
-dom_edit_image.forEach(function(elem) {setImageSize(elem);});
-setImageSize(dom_edit_hoard);
+dom_edit_image_img.forEach(function(elem) {setImageSize(elem);});
+setImageSize(dom_edit_hoard_img);
 
 // Initialize map and trap data.
 const map = new TrapMap();
@@ -615,7 +630,11 @@ window.addEventListener("wheel", onMouseWheel);
 
 // Set up other input event handlers.
 window.addEventListener("keypress", onKeyPress);
+document.getElementById("edit_image1_delete").addEventListener("click", function(e) {onDeleteTrapImage(0, e);});
+document.getElementById("edit_image2_delete").addEventListener("click", function(e) {onDeleteTrapImage(1, e);});
+document.getElementById("edit_image3_delete").addEventListener("click", function(e) {onDeleteTrapImage(2, e);});
 document.getElementById("edit_image_add").addEventListener("click", onAddTrapImage);
+document.getElementById("edit_hoard_delete").addEventListener("click", onDeleteHoardImage);
 document.getElementById("edit_hoard_add").addEventListener("click", onAddHoardImage);
 document.getElementById("edit_delete").addEventListener("click", onDeleteTrap);
 
@@ -891,6 +910,13 @@ function onAddTrapImage(e)
 }
 
 
+function onDeleteTrapImage(index, e)
+{
+    edit_trap.deleteImage(index);
+    refreshEditBox(edit_trap);
+}
+
+
 function onAddHoardImage(e)
 {
     dom_img_load.onchange = function(e) {
@@ -901,6 +927,13 @@ function onAddHoardImage(e)
         }
     };
     dom_img_load.click();
+}
+
+
+function onDeleteHoardImage(e)
+{
+    edit_trap.setHoard(null);
+    refreshEditBox(edit_trap);
 }
 
 

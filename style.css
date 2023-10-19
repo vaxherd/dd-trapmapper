@@ -66,8 +66,28 @@ div.imagelist {
 	vertical-align: middle;
 }
 
-div.imagelist img {
+div.imageholder {
+	position: relative;  // so delete button can be positioned within it
 	margin: 3px;
+}
+
+div.deletebutton {
+	position: absolute;
+	right: 5px;
+	top: 5px;
+	width: 20px;
+	height: 20px;
+	border: 1px solid rgba(63,21,21,0.5);
+	padding: 0;
+	border-radius: 10px;
+	background-color: rgba(255,85,85,0.5);
+	color: black;
+	cursor: pointer;
+	text-align: center;
+}
+
+div.deletebutton:hover {
+	background-color: rgba(255,112,112,1.0);
 }
 
 div.buttonholder {
