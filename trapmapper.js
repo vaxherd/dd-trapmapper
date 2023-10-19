@@ -44,6 +44,13 @@ function refreshEditBox(trap)
         dom_edit_hoard_add_holder.classList.remove("hidden");
     }
     dom_edit_index.value = trap.index;
+    for (var i = 0; i < dom_edit_color.length; i++) {
+        if (i == trap.color) {
+            dom_edit_color[i].classList.add("selected");
+        } else {
+            dom_edit_color[i].classList.remove("selected");
+        }
+    }
 }
 
 
@@ -126,7 +133,7 @@ class Trap
         this.index = index;
 
         this._icon_base = new Two.Circle(0, 0, 15, 32);
-        this._icon_base.noStroke().fill = "rgba(255, 0, 0, 1.0)";
+        this._icon_base.noStroke().fill = window.getComputedStyle(dom_edit_color[0]).getPropertyValue("background-color");
         this._icon_base.opacity = 0.5;
         this._icon_hoard = new Two.Circle(0, 0, 5, 32);
         this._icon_hoard.noStroke().fill = "rgba(255, 255, 0, 1.0)";
@@ -204,6 +211,13 @@ class Trap
     {
         this.index = index;
         this._icon_index.value = index;
+    }
+
+    /* Set the color (0-4) for this trap.  Updates the icon appropriately. */
+    setColor(color)
+    {
+        this.color = color;
+        this._icon_base.fill = window.getComputedStyle(dom_edit_color[color]).getPropertyValue("background-color");
     }
 }
 
@@ -660,6 +674,11 @@ const dom_edit_hoard = document.getElementById("edit_hoard");
 const dom_edit_hoard_img = document.getElementById("edit_hoard_img");
 const dom_edit_hoard_add_holder = document.getElementById("edit_hoard_add_holder");
 const dom_edit_index = document.getElementById("edit_index");
+const dom_edit_color = [document.getElementById("edit_color1"),
+                        document.getElementById("edit_color2"),
+                        document.getElementById("edit_color3"),
+                        document.getElementById("edit_color4"),
+                        document.getElementById("edit_color5")];
 const dom_img_load = document.getElementById("img_load");
 
 // Create base canvas.
@@ -690,13 +709,18 @@ window.addEventListener("wheel", onMouseWheel);
 
 // Set up other input event handlers.
 window.addEventListener("keypress", onKeyPress);
-document.getElementById("edit_image1_delete").addEventListener("click", function(e) {onDeleteTrapImage(0, e);});
-document.getElementById("edit_image2_delete").addEventListener("click", function(e) {onDeleteTrapImage(1, e);});
-document.getElementById("edit_image3_delete").addEventListener("click", function(e) {onDeleteTrapImage(2, e);});
+for (var i = 0; i < dom_edit_image.length; i++) {
+    const i_ = i;
+    document.getElementById("edit_image"+(i+1)+"_delete").addEventListener("click", function(e) {onDeleteTrapImage(i_, e);});
+}
 document.getElementById("edit_image_add").addEventListener("click", onAddTrapImage);
 document.getElementById("edit_hoard_delete").addEventListener("click", onDeleteHoardImage);
 document.getElementById("edit_hoard_add").addEventListener("click", onAddHoardImage);
 dom_edit_index.addEventListener("change", onSetTrapIndex);
+for (var i = 0; i < dom_edit_color.length; i++) {
+    const i_ = i;
+    dom_edit_color[i].addEventListener("click", function(e) {onSetColor(i_, e);});
+}
 document.getElementById("edit_delete").addEventListener("click", onDeleteTrap);
 
 // Initialize editing state.
@@ -1025,6 +1049,13 @@ function onSetTrapIndex(e)
     if (index != edit_trap.index) {
         map.setTrapIndex(edit_trap, dom_edit_index.value);
     }
+}
+
+
+function onSetColor(color, e)
+{
+    edit_trap.setColor(color);
+    refreshEditBox(edit_trap);
 }
 
 

@@ -14,6 +14,22 @@ p + p {
 	display: none !important;
 }
 
+.color1 {
+	background-color: rgb(255, 0, 0);
+}
+.color2 {
+	background-color: rgb(255, 128, 0);
+}
+.color3 {
+	background-color: rgb(64, 255, 64);
+}
+.color4 {
+	background-color: rgb(64, 160, 255);
+}
+.color5 {
+	background-color: rgb(160, 32, 255);
+}
+
 div#container {
 	position: fixed;
 	width: 100%;
@@ -130,6 +146,26 @@ div.button.red {
 
 div.button.red:hover {
 	background-color: rgb(255,112,112);
+}
+
+div.colorbutton {
+	width: 14px;
+	height: 14px;
+	margin: 0 2px;
+	border: 2px solid rgba(0,0,0,0);
+	padding: 0;
+	border-radius: 7px;
+	opacity: 0.6;
+	cursor: pointer;
+}
+
+div.colorbutton:hover {
+	opacity: 1.0;
+}
+
+div.colorbutton.selected {
+	border-color: white;
+	opacity: 1.0;
 }
 
 table.keylist {
