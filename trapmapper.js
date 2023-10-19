@@ -80,7 +80,7 @@ class Trap
         this.room_x = room_x;
         this.room_y = room_y;
         this.index = index;
-        this.icon = new Two.Circle(0, 0, 15, 32);  // Positioned by caller
+        this.icon = new Two.Circle(x, y, 15, 32);
         this.icon.noStroke().fill = "rgba(255, 0, 0, 1.0)";
     }
 }
@@ -98,18 +98,22 @@ class TrapMap
     src = "";
     /* Coordinates of room centers: list of 50 coordinate pairs, row-major.
      * Corner rooms (A11, A15, ...) are ignored */
-    rooms = [[   0,   0], [ 624, 192], [1008, 192], [1392, 192], [   0,   0],
-             [   0,   0], [2672, 192], [3056, 192], [3440, 192], [   0,   0],
-             [ 240, 576], [ 624, 576], [1008, 576], [1392, 576], [1776, 576],
-             [2288, 576], [2672, 576], [3056, 576], [3440, 576], [3824, 576],
-             [ 240, 960], [ 624, 960], [1008, 960], [1392, 960], [1776, 960],
-             [2288, 960], [2672, 960], [3056, 960], [3440, 960], [3824, 960],
-             [ 240,1344], [ 624,1344], [1008,1344], [1392,1344], [1776,1344],
-             [2288,1344], [2672,1344], [3056,1344], [3440,1344], [3824,1344],
-             [   0,   0], [ 624,1728], [1008,1728], [1392,1728], [   0,   0],
-             [   0,   0], [2672,1728], [3056,1728], [3440,1728], [   0,   0]];
+    DEFAULT_ROOMS = [
+        [   0,   0], [ 624, 192], [1008, 192], [1392, 192], [   0,   0],
+        [   0,   0], [2672, 192], [3056, 192], [3440, 192], [   0,   0],
+        [ 240, 576], [ 624, 576], [1008, 576], [1392, 576], [1776, 576],
+        [2288, 576], [2672, 576], [3056, 576], [3440, 576], [3824, 576],
+        [ 240, 960], [ 624, 960], [1008, 960], [1392, 960], [1776, 960],
+        [2288, 960], [2672, 960], [3056, 960], [3440, 960], [3824, 960],
+        [ 240,1344], [ 624,1344], [1008,1344], [1392,1344], [1776,1344],
+        [2288,1344], [2672,1344], [3056,1344], [3440,1344], [3824,1344],
+        [   0,   0], [ 624,1728], [1008,1728], [1392,1728], [   0,   0],
+        [   0,   0], [2672,1728], [3056,1728], [3440,1728], [   0,   0]];
+    rooms = this.DEFAULT_ROOMS.slice();
     /* List of traps (Trap instances) per room, indexed by room ID */
     room_traps = new Map();
+    /* Two.Group encapsulating all graphic objects (for scrolling/zooming) */
+    root_group = null;
     /* Image (Two.Sprite) instance */
     image = null;
     /* Two.Group containing trap icons */
@@ -124,21 +128,26 @@ class TrapMap
 
     constructor()
     {
+        this.root_group = two.makeGroup();
         const texture = new Two.Texture(document.getElementById("blank_map"));
-        this.image = new Two.Sprite(texture, two.width/2, two.height/2, 1, 1);
-        this.width = this.image.texture.image.width;
-        this.height = this.image.texture.image.height;
-        this.image.scale = two.width / this.width;
-        two.add(this.image);
+        this.width = texture.image.width;
+        this.height = texture.image.height;
+        this.image = new Two.Sprite(texture, this.width/2, this.height/2, 1, 1);
+        const scale = two.width / this.width;
+        this.root_group.scale = scale;
+        this.root_group.position.x = two.width/2 - (this.width/2)*scale;
+        this.root_group.position.y = two.height/2 - (this.height/2)*scale;
+        this.root_group.add(this.image);
         this.setBackground(null);
-        this.trap_group = two.makeGroup();
+        this.trap_group = new Two.Group();
+        this.root_group.add(this.trap_group);
         this._initRoomIcons();
     }
 
     /* Set the background image (null for the default background image).
      * The image will be loaded asynchronously.  If `relative` is true,
      * `src` is treated as relative to `this.basePath`.*/
-    setBackground(src, relative)
+    setBackground(src, relative=false)
     {
         if (relative) {
             this.src = this.basePath + src;
@@ -151,16 +160,23 @@ class TrapMap
             this_.image.texture = texture;
             this_.width = texture.image.width;
             this_.height = texture.image.height;
-            this_.image.scale = two.width / this_.width;
             two.update();
         });
     }
 
-    /* Clear all traps. */
-    clear()
+    /* Set the background image and all room positions to the default. */
+    resetBackground()
     {
-        two.remove(this.trap_group);
-        this.trap_group = two.makeGroup();
+        this.setBackground();
+        this.rooms = this.DEFAULT_ROOMS.slice();
+    }
+
+    /* Clear all traps. */
+    clearTraps()
+    {
+        this.root_group.remove(this.trap_group);
+        this.trap_group = new Two.Group();
+        this.root_group.add(this.trap_group);
         this.room_traps = new Map();
     }
 
@@ -175,38 +191,38 @@ class TrapMap
     /* Convert global (window) coordinates to background image coordinates. */
     fromGlobal(x, y)
     {
-        return [(x - this.image.position.x) / this.image.scale + this.width/2,
-                (y - this.image.position.y) / this.image.scale + this.height/2];
+        const rg = this.root_group;
+        return [(x - rg.position.x) / rg.scale,
+                (y - rg.position.y) / rg.scale];
     }
 
     /* Convert background image coordinates to global (window) coordinates. */
     toGlobal(x, y)
     {
-        return [(x - this.width/2) * this.image.scale + this.image.position.x,
-                (y - this.height/2) * this.image.scale + this.image.position.y];
+        const rg = this.root_group;
+        return [x * rg.scale + rg.position.x,
+                y * rg.scale + rg.position.y];
+    }
+
+    /* Return the current render scale of the map. */
+    scale()
+    {
+        return this.root_group.scale;
     }
 
     /* Adjust the map position by the given global coordinate deltas. */
     adjustPosition(dx, dy)
     {
-        this.image.position.x += dx;
-        this.image.position.y += dy;
-        this.forEachTrap(function(trap) {
-            trap.icon.position.x += dx;
-            trap.icon.position.y += dy;
-        });
-        this.room_icons.forEach(function(icon) {
-            icon.position.x += dx;
-            icon.position.y += dy;
-        });
+        this.root_group.position.x += dx;
+        this.root_group.position.y += dy;
     }
 
     /* Adjust the map scale by the given factor, centered on the given
      * window coordinates. */
     adjustScale(factor, x, y)
     {
-        const old_scale = this.image.scale;
-        this.image.scale *= factor;
+        const old_scale = this.root_group.scale;
+        this.root_group.scale *= factor;
         // Also offset the image so we zoom in/out around the pointer position:
         //    (xy - pos1) / scale1 = (xy - pos2) / scale2
         //    (xy - pos1) * scale2 = (xy - pos2) * scale1
@@ -214,26 +230,11 @@ class TrapMap
         //    pos2*scale1 = xy*scale1 - (xy*scale2 - pos1*scale2)
         //    pos2 = xy - ((xy*scale2 - pos1*scale2) / scale1)
         //    pos2 = xy - ((xy - pos1) * scale2 / scale1)
-        const zoom = this.image.scale / old_scale;
-        const new_x = x - ((x - this.image.position.x) * zoom);
-        const new_y = y - ((y - this.image.position.y) * zoom);
-        this.image.position.x = new_x;
-        this.image.position.y = new_y;
-        const w2 = this.width / 2;
-        const h2 = this.height/2;
-        const s = this.image.scale;
-        this.forEachTrap(function(trap) {
-            trap.icon.position.x = new_x + ((trap.x - w2) * s);
-            trap.icon.position.y = new_y + ((trap.y - h2) * s);
-            trap.icon.scale *= factor;
-        });
-        const this_ = this;
-        this.room_icons.forEach(function(icon, room) {
-            const [rx, ry] = this_.roomCenter(room);
-            icon.position.x = new_x + ((rx - w2) * s);
-            icon.position.y = new_y + ((ry - h2) * s);
-            icon.scale *= factor;
-        });
+        const zoom = this.root_group.scale / old_scale;
+        const new_x = x - ((x - this.root_group.position.x) * zoom);
+        const new_y = y - ((y - this.root_group.position.y) * zoom);
+        this.root_group.position.x = new_x;
+        this.root_group.position.y = new_y;
     }
 
     /* Return the room ID (string) for the given background image
@@ -315,8 +316,6 @@ class TrapMap
         }
         const trap = new Trap(x, y, x-room_x, y-room_y, index);
         traps.push(trap);
-        [trap.icon.position.x, trap.icon.position.y] = this.toGlobal(x, y);
-        trap.icon.scale = this.image.scale;
         this.trap_group.add(trap.icon);
         return trap;
     }
@@ -342,15 +341,14 @@ class TrapMap
         this.rooms[room_index][0] += dx;
         this.rooms[room_index][1] += dy;
         const icon = this.room_icons.get(room_id);
-        const scale = this.image.scale;
-        icon.position.x += dx * scale;
-        icon.position.y += dy * scale;
+        icon.position.x += dx;
+        icon.position.y += dy;
         const traps = this.room_traps.get(room_id) || [];
         traps.forEach(function(trap) {
             trap.x += dx;
             trap.y += dy;
-            trap.icon.position.x += dx * scale;
-            trap.icon.position.y += dy * scale;
+            trap.icon.position.x += dx;
+            trap.icon.position.y += dy;
         });
     }
 
@@ -373,7 +371,7 @@ class TrapMap
     deserialize(str)
     {
         const data = JSON.parse(str);
-        this.clear();
+        this.clearTraps();
         if (data.basePath) {
             this.basePath = data.basePath;
         }
@@ -388,9 +386,6 @@ class TrapMap
                 const trap = new Trap(x+cx, y+cy, x, y, index);
                 trap.color = color;
                 traps.push(trap);
-                [trap.icon.position.x, trap.icon.position.y] =
-                    this_.toGlobal(x+cx, y+cy);
-                trap.icon.scale = this_.image.scale;
                 this_.trap_group.add(trap.icon);
             });
             this.room_traps.set(room, traps);
@@ -403,21 +398,19 @@ class TrapMap
     _initRoomIcons()
     {
         if (this.room_group) {
-            two.remove(this.room_group);
+            this.root_group.remove(this.room_group);
         }
         this.room_icons = new Map();
-        this.room_group = two.makeGroup();
+        this.room_group = new Two.Group();
+        this.root_group.add(this.room_group);
         this.room_group.opacity = 0;
         const this_ = this;
         this.rooms.forEach(function(center, i) {
             if ((i%5 == 0 || i%5 == 4) && (i < 10 || i >= 40)) {
                 // Corner room, ignore.
             } else {
-                const [x, y] = center;
-                const [gx, gy] = this_.toGlobal(x, y);
-                const icon = new Two.Circle(gx, gy, 30, 32);
+                const icon = new Two.Circle(center[0], center[1], 30, 32);
                 icon.noStroke().fill = "rgba(255, 255, 255, 0.75)";
-                icon.scale = this_.image.scale;
                 var rx = i % 10;
                 var ry = Math.trunc(i / 10);
                 var prefix;
@@ -509,14 +502,14 @@ function onMouseMove(e)
     if (e.buttons & 1) {
         if (edit_rooms) {
             if (mouse_room) {
-                map.moveRoom(mouse_room, e.movementX / map.image.scale,
-                                         e.movementY / map.image.scale);
+                map.moveRoom(mouse_room, e.movementX / map.scale(),
+                                         e.movementY / map.scale());
                 two.update();
             }
         } else {
             if (clicked_trap) {
-                clicked_trap.icon.position.x += e.movementX;
-                clicked_trap.icon.position.y += e.movementY;
+                clicked_trap.icon.position.x += e.movementX / map.scale();
+                clicked_trap.icon.position.y += e.movementY / map.scale();
                 two.update();
             }
         }
@@ -525,16 +518,16 @@ function onMouseMove(e)
             var [room, rx, ry] = map.roomId(bg_x, bg_y, true);
             if (room) {
                 const dist = distance2(bg_x, bg_y, rx, ry) ** 0.5;
-                if (dist * map.image.scale > 12) {
+                if (dist * map.scale() > 12) {
                     room = null;
                 }
             }
             if (mouse_room != room) {
                 if (mouse_room) {
-                    map.room_icons.get(mouse_room).scale /= 1.3;
+                    map.room_icons.get(mouse_room).scale = 1;
                 }
                 if (room) {
-                    map.room_icons.get(room).scale *= 1.3;
+                    map.room_icons.get(room).scale = 1.3;
                 }
             }
             mouse_room = room;
@@ -542,16 +535,16 @@ function onMouseMove(e)
             var trap = map.getTrap(bg_x, bg_y);
             if (trap) {
                 const dist = distance2(bg_x, bg_y, trap.x, trap.y) ** 0.5;
-                if (dist * map.image.scale > 12) {
+                if (dist * map.scale() > 12) {
                     trap = null;
                 }
             }
             if (mouse_trap !== trap) {
                 if (mouse_trap) {
-                    mouse_trap.icon.scale /= 1.3;
+                    mouse_trap.icon.scale = 1;
                 }
                 if (trap) {
-                    trap.icon.scale *= 1.3;
+                    trap.icon.scale = 1.3;
                 }
             }
             mouse_trap = trap;
@@ -579,10 +572,9 @@ function onMouseDown(e)
             if (mouse_trap) {
                 clicked_trap = mouse_trap;
             } else {
-                const [x, y] = map.fromGlobal(e.clientX, e.clientY);
-                clicked_trap = map.addTrap(x, y);
+                clicked_trap = map.addTrap(bg_x, bg_y);
                 clicked_trap.icon.fill = "rgba(255, 0, 0, 0.4)";
-                clicked_trap.icon.scale *= 1.3;
+                clicked_trap.icon.scale = 1.3;
             }
         }
         click_x = bg_x;
@@ -633,7 +625,7 @@ function onKeyPress(e)
     }
 
     if (e.key == "B") {  // shift-B
-        map.clear();
+        map.clearTraps();
         map.setBackground(null);
 
     } else if (e.key == "L") {  // shift-L
