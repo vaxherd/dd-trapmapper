@@ -66,12 +66,19 @@ class Trap
     index = 0;
     /* Trap color index */
     color = 0;
-    /* Trap icon (Two.Sprite) */
+    /* Trap icon (Two.Group) */
     icon = null;
-    /* Trap images (Two.Sprite) */
+    /* Trap images (image URL strings) */
     images = [];
-    /* Hoard image (Two.Sprite), null if none */
+    /* Hoard image (image URL string), null if none */
     hoard = null;
+
+    /* Base trap icon (internal) */
+    _icon_base = null;
+    /* Hoard icon (internal) */
+    _icon_hoard = null;
+    /* Index overlay (internal) */
+    _icon_index = null;
 
     constructor(x, y, room_x, room_y, index)
     {
@@ -80,8 +87,29 @@ class Trap
         this.room_x = room_x;
         this.room_y = room_y;
         this.index = index;
-        this.icon = new Two.Circle(x, y, 15, 32);
-        this.icon.noStroke().fill = "rgba(255, 0, 0, 1.0)";
+
+        this._icon_base = new Two.Circle(0, 0, 15, 32);
+        this._icon_base.noStroke().fill = "rgba(255, 0, 0, 1.0)";
+        this._icon_hoard = new Two.Circle(0, 0, 5, 32);
+        this._icon_hoard.noStroke().fill = "rgba(255, 255, 0, 1.0)";
+        this._icon_hoard.opacity = 0;
+        this._icon_index = new Two.Text(this.index, 0, 1);
+        this._icon_index.family = window.getComputedStyle(document.querySelector("body")).getPropertyValue("font-family");
+        this._icon_index.weight = 700;
+        this._icon_index.size = 20;
+        this._icon_index.fill = "rgba(255, 255, 255, 1.0)";
+        this._icon_index.stroke = "rgba(0, 0, 0, 1.0)";
+        this._icon_index.opacity = 0;
+        this.icon = new Two.Group(this._icon_base, this._icon_hoard,
+                                  this._icon_index);
+        this.icon.position.x = x;
+        this.icon.position.y = y;
+    }
+
+    /* Set whether to display the trap index overlay. */
+    setIndexVisible(visible)
+    {
+        this._icon_index.opacity = visible ? 1.0 : 0.0;
     }
 }
 
@@ -320,6 +348,12 @@ class TrapMap
         return trap;
     }
 
+    /* Toggle trap index numbers on or off. */
+    setTrapIndexVisible(visible)
+    {
+        this.forEachTrap(function(trap) {trap.setIndexVisible(visible)});
+    }
+
     /* Toggle room/trap icon opacity depending on edit mode. */
     setEditRoomsMode(edit_rooms)
     {
@@ -467,6 +501,7 @@ window.addEventListener("wheel", onMouseWheel);
 window.addEventListener("keypress", onKeyPress);
 
 // Initialize editing state.
+var show_indexes = false; // Show trap index numbers?
 var mouse_trap = null;    // Trap over which the mouse is hovering
 var clicked_trap = null;  // Trap which is currently grabbed
 var click_x = 0;  // bg_[xy] at click time
@@ -665,6 +700,10 @@ function onKeyPress(e)
 
     } else if (e.key == "S") {  // shift-S
         saveFile(map.serialize(), map_pathname);
+
+    } else if (e.key == "#") {
+        show_indexes = !show_indexes;
+        map.setTrapIndexVisible(show_indexes);
 
     } else if (e.key == "?") {
         helpbox.classList.remove("hidden");
