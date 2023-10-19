@@ -126,6 +126,7 @@ class Trap
 
         this._icon_base = new Two.Circle(0, 0, 15, 32);
         this._icon_base.noStroke().fill = "rgba(255, 0, 0, 1.0)";
+        this._icon_base.opacity = 0.5;
         this._icon_hoard = new Two.Circle(0, 0, 5, 32);
         this._icon_hoard.noStroke().fill = "rgba(255, 255, 0, 1.0)";
         this._icon_hoard.opacity = 0;
@@ -169,6 +170,21 @@ class Trap
         this.room_y += dy;
         this.icon.position.x = this.x;
         this.icon.position.y = this.y;
+    }
+
+    /* Add a trap image.  Updates the trap icon if this is the first image. */
+    addImage(filename)
+    {
+        this.images.push(filename);
+        this._icon_base.opacity = 1.0;
+    }
+
+    /* Set the hoard image (null to clear any previously set image).
+     * Updates the hoard icon appropriately. */
+    setHoard(filename)
+    {
+        this.hoard = filename;
+        this._icon_hoard.opacity = filename ? 1.0 : 0.0;
     }
 }
 
@@ -496,8 +512,8 @@ class TrapMap
                 const {x, y, index, color, images, hoard} = trap_data;
                 const trap = new Trap(x+cx, y+cy, x, y, index);
                 trap.color = color;
-                trap.images = images;
-                trap.hoard = hoard;
+                images.forEach(function(image) {trap.addImage(image);});
+                trap.setHoard(hoard);
                 traps.push(trap);
                 this_.trap_group.add(trap.icon);
             });
@@ -867,7 +883,7 @@ function onAddTrapImage(e)
     dom_img_load.onchange = function(e) {
         const file = dom_img_load.files[0];
         if (file) {
-            edit_trap.images.push(file.name);
+            edit_trap.addImage(file.name);
             refreshEditBox(edit_trap);
         }
     };
@@ -880,7 +896,7 @@ function onAddHoardImage(e)
     dom_img_load.onchange = function(e) {
         const file = dom_img_load.files[0];
         if (file) {
-            edit_trap.hoard = file.name;
+            edit_trap.setHoard(file.name);
             refreshEditBox(edit_trap);
         }
     };
