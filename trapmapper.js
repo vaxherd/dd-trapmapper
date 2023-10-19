@@ -152,7 +152,7 @@ class Trap
         this._icon_wall.noFill().stroke = "rgb(0, 0, 0)";
         this._icon_wall.linewidth = 2.5;
         this._icon_wall.opacity = 0;
-        this._icon_hoard = new Two.Circle(0, 0, 5, 32);
+        this._icon_hoard = new Two.Circle(0, 0, 3.5, 32);
         this._icon_hoard.noStroke().fill = "rgba(255, 255, 0, 1.0)";
         this._icon_hoard.opacity = 0;
         this._icon_index = new Two.Text(this.index, 0, 1);
