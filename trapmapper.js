@@ -553,7 +553,7 @@ function onMouseMove(e)
             var [room, rx, ry] = map.roomId(bg_x, bg_y, true);
             if (room) {
                 const dist = distance2(bg_x, bg_y, rx, ry) ** 0.5;
-                if (dist * map.scale() > 12) {
+                if (dist > 30*1.3 + 5/map.scale()) {
                     room = null;
                 }
             }
@@ -570,7 +570,7 @@ function onMouseMove(e)
             var trap = map.getTrap(bg_x, bg_y);
             if (trap) {
                 const dist = distance2(bg_x, bg_y, trap.x, trap.y) ** 0.5;
-                if (dist * map.scale() > 12) {
+                if (dist > 15*1.3 + 5/map.scale()) {
                     trap = null;
                 }
             }
