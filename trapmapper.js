@@ -566,7 +566,7 @@ class TrapMap
                                        wall_closed: trap.wall_closed});
             });
         });
-        return JSON.stringify(data);
+        return JSON.stringify(data, null, 2);
     }
 
     /* Deserialize map/trap data from a string. */
