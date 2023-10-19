@@ -35,6 +35,7 @@ function refreshEditBox(trap)
     } else {
         dom_edit_image_add_holder.classList.add("hidden");
     }
+
     if (trap.hoard) {
         dom_edit_hoard.classList.remove("hidden");
         dom_edit_hoard_img.src = map.basePath + trap.hoard;
@@ -43,7 +44,9 @@ function refreshEditBox(trap)
         dom_edit_hoard.classList.add("hidden");
         dom_edit_hoard_add_holder.classList.remove("hidden");
     }
+
     dom_edit_index.value = trap.index;
+
     for (var i = 0; i < dom_edit_color.length; i++) {
         if (i == trap.color) {
             dom_edit_color[i].classList.add("selected");
@@ -51,6 +54,9 @@ function refreshEditBox(trap)
             dom_edit_color[i].classList.remove("selected");
         }
     }
+
+    dom_edit_wall.checked = edit_trap.wall_trap;
+    dom_edit_wall.indeterminate = edit_trap.wall_closed;
 }
 
 
@@ -116,9 +122,16 @@ class Trap
     images = [];
     /* Hoard image (image filename string), null if none */
     hoard = null;
+    /* Is this a wall trap? */
+    wall_trap = false;
+    /* Is this only a wall trap if the wall is closed?  (always false if
+     * wall_trap is false) */
+    wall_closed = false;
 
     /* Base trap icon (internal) */
     _icon_base = null;
+    /* Wall-closed trap indicator (internal) */
+    _icon_wall = null;
     /* Hoard icon (internal) */
     _icon_hoard = null;
     /* Index overlay (internal) */
@@ -132,9 +145,13 @@ class Trap
         this.room_y = room_y;
         this.index = index;
 
-        this._icon_base = new Two.Circle(0, 0, 15, 32);
+        this._icon_base = new Two.Circle(0, 0, 10, 32);
         this._icon_base.noStroke().fill = window.getComputedStyle(dom_edit_color[0]).getPropertyValue("background-color");
         this._icon_base.opacity = 0.5;
+        this._icon_wall = new Two.Circle(0, 0, 10, 32);
+        this._icon_wall.noFill().stroke = "rgb(0, 0, 0)";
+        this._icon_wall.linewidth = 2.5;
+        this._icon_wall.opacity = 0;
         this._icon_hoard = new Two.Circle(0, 0, 5, 32);
         this._icon_hoard.noStroke().fill = "rgba(255, 255, 0, 1.0)";
         this._icon_hoard.opacity = 0;
@@ -145,8 +162,8 @@ class Trap
         this._icon_index.fill = "rgba(255, 255, 255, 1.0)";
         this._icon_index.stroke = "rgba(0, 0, 0, 1.0)";
         this._icon_index.opacity = 0;
-        this.icon = new Two.Group(this._icon_base, this._icon_hoard,
-                                  this._icon_index);
+        this.icon = new Two.Group(this._icon_base, this._icon_wall,
+                                  this._icon_hoard, this._icon_index);
         this.icon.position.x = x;
         this.icon.position.y = y;
     }
@@ -218,6 +235,19 @@ class Trap
     {
         this.color = color;
         this._icon_base.fill = window.getComputedStyle(dom_edit_color[color]).getPropertyValue("background-color");
+    }
+
+    /* Set whether this is a wall trap.  Possible value combinations:
+     *    false, false = not a wall trap
+     *    true, false  = always a wall trap
+     *    true, true   = wall trap when the wall is closed
+     * Updates the icon appropriately. */
+    setWallTrap(wall_trap, wall_closed)
+    {
+        this.wall_trap = wall_trap;
+        this.wall_closed = wall_trap && wall_closed;
+        this._icon_base.radius = this.wall_trap ? 15 : 10;
+        this._icon_wall.opacity = this.wall_closed ? 1.0 : 0.0;
     }
 }
 
@@ -531,7 +561,9 @@ class TrapMap
             traps.forEach(function(trap) {
                 data.traps[room].push({x: trap.room_x, y: trap.room_y,
                                        index: trap.index, color: trap.color,
-                                       images: trap.images, hoard: trap.hoard});
+                                       images: trap.images, hoard: trap.hoard,
+                                       wall_trap: trap.wall_trap,
+                                       wall_closed: trap.wall_closed});
             });
         });
         return JSON.stringify(data);
@@ -552,11 +584,13 @@ class TrapMap
             const [cx, cy] = this.roomCenter(room);
             var traps = [];
             data.traps[room].forEach(function(trap_data) {
-                const {x, y, index, color, images, hoard} = trap_data;
+                const {x, y, index, color, images, hoard,
+                       wall_trap, wall_closed} = trap_data;
                 const trap = new Trap(x+cx, y+cy, x, y, index);
-                trap.color = color;
                 images.forEach(function(image) {trap.addImage(image);});
                 trap.setHoard(hoard);
+                trap.setColor(color);
+                trap.setWallTrap(wall_trap, wall_closed);
                 traps.push(trap);
                 this_.trap_group.add(trap.icon);
             });
@@ -679,6 +713,7 @@ const dom_edit_color = [document.getElementById("edit_color1"),
                         document.getElementById("edit_color3"),
                         document.getElementById("edit_color4"),
                         document.getElementById("edit_color5")];
+const dom_edit_wall = document.getElementById("edit_wall");
 const dom_img_load = document.getElementById("img_load");
 
 // Create base canvas.
@@ -721,6 +756,7 @@ for (var i = 0; i < dom_edit_color.length; i++) {
     const i_ = i;
     dom_edit_color[i].addEventListener("click", function(e) {onSetColor(i_, e);});
 }
+dom_edit_wall.addEventListener("change", onSetWallTrap);
 document.getElementById("edit_delete").addEventListener("click", onDeleteTrap);
 
 // Initialize editing state.
@@ -1055,6 +1091,19 @@ function onSetTrapIndex(e)
 function onSetColor(color, e)
 {
     edit_trap.setColor(color);
+    refreshEditBox(edit_trap);
+}
+
+
+function onSetWallTrap(e)
+{
+    if (edit_trap.wall_closed) {
+        edit_trap.setWallTrap(false, false);
+    } else if (edit_trap.wall_trap) {
+        edit_trap.setWallTrap(true, true);
+    } else {
+        edit_trap.setWallTrap(true, false);
+    }
     refreshEditBox(edit_trap);
 }
 

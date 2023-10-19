@@ -168,6 +168,12 @@ div.colorbutton.selected {
 	opacity: 1.0;
 }
 
+span.checklabel {
+	color: white;
+	font-size: 80%;
+	white-space: pre;
+}
+
 table.keylist {
 	margin: 0.5em 1.5em;
 	padding: 0;
