@@ -197,6 +197,13 @@ class Trap
         this.hoard = filename;
         this._icon_hoard.opacity = filename ? 1.0 : 0.0;
     }
+
+    /* Set the numeric index for this trap.  Updates the icon appropriately. */
+    setIndex(index)
+    {
+        this.index = index;
+        this._icon_index.value = index;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -414,40 +421,35 @@ class TrapMap
     /* Add a trap at the given point, and return the new trap. */
     addTrap(x, y) {
         const [room, room_x, room_y] = this.roomId(x, y, true);
-        if (!this.room_traps.get(room)) {
-            this.room_traps.set(room, []);
-        }
-        const traps = this.room_traps.get(room);
-        var index;
-        for (index = 1; ; index++) {
-            var found = false;
-            traps.forEach(function(trap) {
-                found ||= (trap.index == index);
-            });
-            if (!found) {
-                break;
-            }
-        }
+        const [traps, index] = this._getTrapIndex(room);
         const trap = new Trap(x, y, x-room_x, y-room_y, index);
         traps.push(trap);
         this.trap_group.add(trap.icon);
         return trap;
     }
 
+    /* Reassign the given trap to the nearest room.  Should be called
+     * after moving a trap to a new position. */
+    rePlaceTrap(trap)
+    {
+        const [old_room, old_index] = this._findTrap(trap);
+        const [new_room, room_x, room_y] = this.roomId(trap.x, trap.y, true);
+        if (new_room == old_room) {
+            return;
+        }
+        this.room_traps.get(old_room).splice(old_index, 1);
+        const [traps, trap_index] = this._getTrapIndex(new_room);
+        trap.room_x = room_x;
+        trap.room_y = room_y;
+        trap.setIndex(trap_index);
+        traps.push(trap);
+    }
+
     /* Remove the given trap. */
     removeTrap(trap)
     {
-        var room = null;
-        this.room_traps.forEach(function(traps, r) {
-            const index = traps.indexOf(trap);
-            if (index >= 0) {
-                console.assert(room == null);
-                room = r;
-                traps.splice(index, 1);
-            }
-        });
-        console.assert(room != null);
-        console.assert(this.room_traps.get(room).indexOf(trap) < 0);
+        const [room, index] = this._findTrap(trap);
+        this.room_traps.get(room).splice(index, 1);
         this.trap_group.remove(trap.icon);
     }
 
@@ -578,6 +580,47 @@ class TrapMap
         console.assert(row >= "1" && row <= "5");
         console.assert(col >= "1" && col <= "5");
         return (row-1)*10 + (ab=="A" ? 0 : 5) + (col-1);
+    }
+
+    /* Return the room containing the given trap and the trap's index
+     * in the room's trap array.  The trap is assumed to be in the list.
+     * Internal routine. */
+    _findTrap(trap)
+    {
+        var room = null;
+        var index = null;
+        this.room_traps.forEach(function(traps, r) {
+            const i = traps.indexOf(trap);
+            if (i >= 0) {
+                console.assert(room == null);
+                room = r;
+                index = i;
+            }
+        });
+        console.assert(room != null);
+        return [room, index];
+    }
+
+    /* Return the first unused trap index for the given room.  Also
+     * returns the room's trap array (initialized to an empty array if
+     * necessary) for convenience.  Internal routine. */
+    _getTrapIndex(room)
+    {
+        if (!this.room_traps.get(room)) {
+            this.room_traps.set(room, []);
+        }
+        const traps = this.room_traps.get(room);
+        var index;
+        for (index = 1; ; index++) {
+            var found = false;
+            traps.forEach(function(trap) {
+                found ||= (trap.index == index);
+            });
+            if (!found) {
+                break;
+            }
+        }
+        return [traps, index];
     }
 }
 
@@ -799,7 +842,8 @@ function onMouseUp(e)
 
     if (e.button == 0) {
         if (clicked_trap) {
-            clicked_trap.icon.opacity = 1;
+            clicked_trap.setDrag(false);
+            map.rePlaceTrap(clicked_trap);
             two.update();
             mouse_trap = clicked_trap;
             clicked_trap = null;
