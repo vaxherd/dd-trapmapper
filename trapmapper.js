@@ -573,9 +573,10 @@ function onMouseDown(e)
                 clicked_trap = mouse_trap;
             } else {
                 clicked_trap = map.addTrap(bg_x, bg_y);
-                clicked_trap.icon.fill = "rgba(255, 0, 0, 0.4)";
                 clicked_trap.icon.scale = 1.3;
             }
+            clicked_trap.icon.opacity = 0.4;
+            two.update();
         }
         click_x = bg_x;
         click_y = bg_y;
@@ -586,10 +587,8 @@ function onMouseUp(e)
 {
     if (e.button == 0) {
         if (clicked_trap) {
-            if (!mouse_trap) {
-                clicked_trap.icon.fill = "rgba(255, 0, 0, 1.0)";
-                two.update();
-            }
+            clicked_trap.icon.opacity = 1;
+            two.update();
             clicked_trap.x += bg_x - click_x;
             clicked_trap.y += bg_y - click_y;
             clicked_trap.room_x += bg_x - click_x;
