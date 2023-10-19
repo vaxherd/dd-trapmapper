@@ -501,11 +501,17 @@ class TrapMap
 ////////////////////////////////////////////////////////////////////////
 // Entry point
 
+// Look up various HTML elements.
+const dom_container = document.getElementById("container");
+const dom_helpbox = document.getElementById("help");
+const dom_popup_image = document.getElementById("popup_image");
+const dom_popup_image_img = document.getElementById("popup_image_img");
+
 // Create base canvas.
 const two = new Two({type: Two.Types.canvas,
                      fullscreen: true,
                      autostart: true});
-two.appendTo(document.getElementById("container"));
+two.appendTo(dom_container);
 
 // Initialize map and trap data.
 const map = new TrapMap();
@@ -541,8 +547,7 @@ window.addEventListener("auxclick", function(e) {
 
 function onMouseMove(e)
 {
-    const helpbox = document.getElementById("help");
-    if (!helpbox.classList.contains("hidden")) {
+    if (!dom_helpbox.classList.contains("hidden")) {
         return;
     }
 
@@ -598,9 +603,17 @@ function onMouseMove(e)
             if (mouse_trap !== trap) {
                 if (mouse_trap) {
                     mouse_trap.setHover(false);
+                    dom_popup_image.classList.add("hidden");
                 }
                 if (trap) {
                     trap.setHover(true);
+                    dom_popup_image_img.src = "./A12-1.png";  // FIXME: dummy path
+                    dom_popup_image_img.width = two.width * 0.2;
+                    dom_popup_image_img.height = dom_popup_image_img.width * (9/16);
+                    const [tx, ty] = map.toGlobal(trap.x, trap.y);
+                    dom_popup_image.style.left = (tx + 15*1.3*map.scale() + 5) + "px";
+                    dom_popup_image.style.top = (ty) + "px";
+                    dom_popup_image.classList.remove("hidden");
                 }
                 two.update();
             }
@@ -611,9 +624,8 @@ function onMouseMove(e)
 
 function onMouseDown(e)
 {
-    const helpbox = document.getElementById("help");
-    if (!helpbox.classList.contains("hidden")) {
-        helpbox.classList.add("hidden");
+    if (!dom_helpbox.classList.contains("hidden")) {
+        dom_helpbox.classList.add("hidden");
         return;
     }
 
@@ -652,8 +664,7 @@ function onMouseUp(e)
 
 function onMouseWheel(e)
 {
-    const helpbox = document.getElementById("help");
-    if (!helpbox.classList.contains("hidden")) {
+    if (!dom_helpbox.classList.contains("hidden")) {
         return;
     }
 
@@ -668,9 +679,8 @@ function onMouseWheel(e)
 
 function onKeyPress(e)
 {
-    const helpbox = document.getElementById("help");
-    if (!helpbox.classList.contains("hidden")) {
-        helpbox.classList.add("hidden");
+    if (!dom_helpbox.classList.contains("hidden")) {
+        dom_helpbox.classList.add("hidden");
         return;
     }
 
@@ -725,7 +735,7 @@ function onKeyPress(e)
         two.update();
 
     } else if (e.key == "?") {
-        helpbox.classList.remove("hidden");
+        dom_helpbox.classList.remove("hidden");
     }
 }
 
