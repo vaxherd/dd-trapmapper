@@ -114,13 +114,17 @@ class TrapMap
     image = null;
     /* Two.Group containing trap icons */
     trap_group = null;
+    /* List of room center icons, indexed by room ID */
+    room_icons = new Map();
+    /* Two.Group containing room center icons */
+    room_group = null;
     /* Image size (for convenience) */
     width = 0;
     height = 0;
 
     constructor()
     {
-        var texture = new Two.Texture(document.getElementById("blank_map"));
+        const texture = new Two.Texture(document.getElementById("blank_map"));
         this.image = new Two.Sprite(texture, two.width/2, two.height/2, 1, 1);
         this.width = this.image.texture.image.width;
         this.height = this.image.texture.image.height;
@@ -128,6 +132,7 @@ class TrapMap
         two.add(this.image);
         this.setBackground(null);
         this.trap_group = two.makeGroup();
+        this._initRoomIcons();
     }
 
     /* Set the background image (null for the default background image).
@@ -181,7 +186,7 @@ class TrapMap
                 (y - this.height/2) * this.image.scale + this.image.position.y];
     }
 
-    /* Adjust the map position by the given coordinate deltas. */
+    /* Adjust the map position by the given global coordinate deltas. */
     adjustPosition(dx, dy)
     {
         this.image.position.x += dx;
@@ -189,6 +194,10 @@ class TrapMap
         this.forEachTrap(function(trap) {
             trap.icon.position.x += dx;
             trap.icon.position.y += dy;
+        });
+        this.room_icons.forEach(function(icon) {
+            icon.position.x += dx;
+            icon.position.y += dy;
         });
     }
 
@@ -218,6 +227,13 @@ class TrapMap
             trap.icon.position.y = new_y + ((trap.y - h2) * s);
             trap.icon.scale *= factor;
         });
+        const this_ = this;
+        this.room_icons.forEach(function(icon, room) {
+            const [rx, ry] = this_.roomCenter(room);
+            icon.position.x = new_x + ((rx - w2) * s);
+            icon.position.y = new_y + ((ry - h2) * s);
+            icon.scale *= factor;
+        });
     }
 
     /* Return the room ID (string) for the given background image
@@ -229,7 +245,7 @@ class TrapMap
         var best_dist2 = Infinity;
         this.rooms.forEach(function(center, i) {
             if ((i%5 == 0 || i%5 == 4) && (i < 10 || i >= 40)) {
-                // Corner room, ignore
+                // Corner room, ignore.
             } else {
                 var dist2 = distance2(x, y, center[0], center[1]);
                 if (dist2 < best_dist2) {
@@ -258,13 +274,7 @@ class TrapMap
     /* Return the center coordinates of the given room. */
     roomCenter(room)
     {
-        const ab = room[0];
-        const row = room[1];
-        const col = room[2];
-        console.assert(ab == "A" || ab == "B");
-        console.assert(row >= "1" && row <= "5");
-        console.assert(col >= "1" && col <= "5");
-        const room_index = (row-1)*10 + (ab=="A" ? 0 : 5) + (col-1);
+        const room_index = this._roomIndex(room);
         return this.rooms[room_index];
     }
 
@@ -311,6 +321,39 @@ class TrapMap
         return trap;
     }
 
+    /* Toggle room/trap icon opacity depending on edit mode. */
+    setEditRoomsMode(edit_rooms)
+    {
+        if (edit_rooms) {
+            this.trap_group.opacity = 0.5;
+            this.room_group.opacity = 1;
+        } else {
+            this.trap_group.opacity = 1;
+            this.room_group.opacity = 0;
+        }
+    }
+
+    /* Move the given room by the given amount (in background image
+     * coordinates).  Traps associated with the room are moved by the
+     * same amount. */
+    moveRoom(room_id, dx, dy)
+    {
+        const room_index = this._roomIndex(room_id);
+        this.rooms[room_index][0] += dx;
+        this.rooms[room_index][1] += dy;
+        const icon = this.room_icons.get(room_id);
+        const scale = this.image.scale;
+        icon.position.x += dx * scale;
+        icon.position.y += dy * scale;
+        const traps = this.room_traps.get(room_id) || [];
+        traps.forEach(function(trap) {
+            trap.x += dx;
+            trap.y += dy;
+            trap.icon.position.x += dx * scale;
+            trap.icon.position.y += dy * scale;
+        });
+    }
+
     /* Serialize map/trap data into a string. */
     serialize()
     {
@@ -352,6 +395,56 @@ class TrapMap
             });
             this.room_traps.set(room, traps);
         }
+        this._initRoomIcons();
+    }
+
+    /* Create icons for each room's center point (for editing).
+     * Internal routine. */
+    _initRoomIcons()
+    {
+        if (this.room_group) {
+            two.remove(this.room_group);
+        }
+        this.room_icons = new Map();
+        this.room_group = two.makeGroup();
+        this.room_group.opacity = 0;
+        const this_ = this;
+        this.rooms.forEach(function(center, i) {
+            if ((i%5 == 0 || i%5 == 4) && (i < 10 || i >= 40)) {
+                // Corner room, ignore.
+            } else {
+                const [x, y] = center;
+                const [gx, gy] = this_.toGlobal(x, y);
+                const icon = new Two.Circle(gx, gy, 30, 32);
+                icon.noStroke().fill = "rgba(255, 255, 255, 0.75)";
+                icon.scale = this_.image.scale;
+                var rx = i % 10;
+                var ry = Math.trunc(i / 10);
+                var prefix;
+                if (rx >= 5) {
+                    prefix = "B";
+                    rx -= 5;
+                } else {
+                    prefix = "A";
+                }
+                const id = prefix + (ry+1) + (rx+1);
+                this_.room_icons.set(id, icon);
+                this_.room_group.add(icon);
+            }
+        });
+    }
+
+    /* Return the rooms[] index corresponding to the given room ID.
+     * Internal routine. */
+    _roomIndex(room)
+    {
+        const ab = room[0];
+        const row = room[1];
+        const col = room[2];
+        console.assert(ab == "A" || ab == "B");
+        console.assert(row >= "1" && row <= "5");
+        console.assert(col >= "1" && col <= "5");
+        return (row-1)*10 + (ab=="A" ? 0 : 5) + (col-1);
     }
 }
 
@@ -374,19 +467,24 @@ var mouse_x = two.width/2;
 var mouse_y = two.height/2;
 var bg_x = map.width/2;
 var bg_y = map.height/2;
-var mouse_trap = null;
-var clicked_trap = null;
-var click_x = 0;  // map_[xy] at click time
-var click_y = 0;
 window.addEventListener("mousemove", onMouseMove);
 window.addEventListener("mousedown", onMouseDown);
 window.addEventListener("mouseup", onMouseUp);
 window.addEventListener("wheel", onMouseWheel);
 window.addEventListener("keypress", onKeyPress);
 
+// Initialize editing state.
+var mouse_trap = null;    // Trap over which the mouse is hovering
+var clicked_trap = null;  // Trap which is currently grabbed
+var click_x = 0;  // bg_[xy] at click time
+var click_y = 0;
+var edit_rooms = false;   // Editing room positions (true) or traps (false)?
+var mouse_room = null;    // ID of room over which the mouse is hovering
+var clicked_room = null;  // ID of room which is currently grabbed
+
 // Prevent middle button paste on Linux when scrolling the map.
 window.addEventListener("auxclick", function(e) {
-    if (e.button==1) e.preventDefault();
+    if (e.button == 1) e.preventDefault();
 });
 
 ////////////////////////////////////////////////////////////////////////
@@ -394,7 +492,7 @@ window.addEventListener("auxclick", function(e) {
 
 function onMouseMove(e)
 {
-    var helpbox = document.getElementById("help");
+    const helpbox = document.getElementById("help");
     if (!helpbox.classList.contains("hidden")) {
         return;
     }
@@ -409,52 +507,83 @@ function onMouseMove(e)
     }
 
     if (e.buttons & 1) {
-        clicked_trap.icon.position.x += e.movementX;
-        clicked_trap.icon.position.y += e.movementY;
-        two.update();
+        if (edit_rooms) {
+            if (mouse_room) {
+                map.moveRoom(mouse_room, e.movementX / map.image.scale,
+                                         e.movementY / map.image.scale);
+                two.update();
+            }
+        } else {
+            if (clicked_trap) {
+                clicked_trap.icon.position.x += e.movementX;
+                clicked_trap.icon.position.y += e.movementY;
+                two.update();
+            }
+        }
     } else {
-        var trap = map.getTrap(bg_x, bg_y);
-        if (trap) {
-            var dist = distance2(bg_x, bg_y, trap.x, trap.y) ** 0.5;
-            if (dist * map.image.scale > 12) {
-                trap = null;
+        if (edit_rooms) {
+            var [room, rx, ry] = map.roomId(bg_x, bg_y, true);
+            if (room) {
+                const dist = distance2(bg_x, bg_y, rx, ry) ** 0.5;
+                if (dist * map.image.scale > 12) {
+                    room = null;
+                }
             }
-        }
-        if (mouse_trap !== trap) {
-            if (mouse_trap) {
-                mouse_trap.icon.scale /= 1.3;
+            if (mouse_room != room) {
+                if (mouse_room) {
+                    map.room_icons.get(mouse_room).scale /= 1.3;
+                }
+                if (room) {
+                    map.room_icons.get(room).scale *= 1.3;
+                }
             }
+            mouse_room = room;
+        } else {
+            var trap = map.getTrap(bg_x, bg_y);
             if (trap) {
-                trap.icon.scale *= 1.3;
+                const dist = distance2(bg_x, bg_y, trap.x, trap.y) ** 0.5;
+                if (dist * map.image.scale > 12) {
+                    trap = null;
+                }
             }
+            if (mouse_trap !== trap) {
+                if (mouse_trap) {
+                    mouse_trap.icon.scale /= 1.3;
+                }
+                if (trap) {
+                    trap.icon.scale *= 1.3;
+                }
+            }
+            mouse_trap = trap;
         }
-        mouse_trap = trap;
     }
 }
 
 function onMouseDown(e)
 {
-    var helpbox = document.getElementById("help");
+    const helpbox = document.getElementById("help");
     if (!helpbox.classList.contains("hidden")) {
         helpbox.classList.add("hidden");
         return;
     }
 
-    /* Normally these will already be set by the mouse-move event, but if
-     * the user clicks before ever moving the mouse, we need to initialize
-     * these ourselves for proper trap placement. */
+    // Normally these will already be set by the mouse-move event, but if
+    // the user clicks before ever moving the mouse, we need to initialize
+    // these ourselves for proper trap placement.
     mouse_x = e.clientX;
     mouse_y = e.clientY;
     [bg_x, bg_y] = map.fromGlobal(mouse_x, mouse_y);
 
     if (e.button == 0) {
-        if (mouse_trap) {
-            clicked_trap = mouse_trap;
-        } else {
-            const [x, y] = map.fromGlobal(e.clientX, e.clientY);
-            clicked_trap = map.addTrap(x, y);
-            clicked_trap.icon.fill = "rgba(255, 0, 0, 0.4)";
-            clicked_trap.icon.scale *= 1.3;
+        if (!edit_rooms) {
+            if (mouse_trap) {
+                clicked_trap = mouse_trap;
+            } else {
+                const [x, y] = map.fromGlobal(e.clientX, e.clientY);
+                clicked_trap = map.addTrap(x, y);
+                clicked_trap.icon.fill = "rgba(255, 0, 0, 0.4)";
+                clicked_trap.icon.scale *= 1.3;
+            }
         }
         click_x = bg_x;
         click_y = bg_y;
@@ -481,7 +610,7 @@ function onMouseUp(e)
 
 function onMouseWheel(e)
 {
-    var helpbox = document.getElementById("help");
+    const helpbox = document.getElementById("help");
     if (!helpbox.classList.contains("hidden")) {
         return;
     }
@@ -497,7 +626,7 @@ function onMouseWheel(e)
 
 function onKeyPress(e)
 {
-    var helpbox = document.getElementById("help");
+    const helpbox = document.getElementById("help");
     if (!helpbox.classList.contains("hidden")) {
         helpbox.classList.add("hidden");
         return;
@@ -520,6 +649,8 @@ function onKeyPress(e)
                 clicked_trap = null;
                 map.deserialize(data);
                 map_pathname = pathname;
+                edit_rooms = false;
+                map.setEditRoomsMode(false);
             }
         });
 
@@ -532,6 +663,14 @@ function onKeyPress(e)
             }
         };
         bg_load.click();
+
+    } else if (e.key == "R") {  // shift-R
+        if (!edit_rooms) {
+            edit_rooms = true;
+        } else {
+            edit_rooms = false;
+        }
+        map.setEditRoomsMode(edit_rooms);
 
     } else if (e.key == "S") {  // shift-S
         saveFile(map.serialize(), map_pathname);
