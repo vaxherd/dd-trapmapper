@@ -90,6 +90,17 @@ div.deletebutton:hover {
 	background-color: rgba(255,112,112,1.0);
 }
 
+div.buttonrow {
+	display: flex;
+	align-items: center;
+	vertical-align: middle;
+}
+
+div.buttonspacer {
+	padding: 0 10px;
+	flex: 1;
+}
+
 div.buttonholder {
 	display: inline-block;
 	height: 100%;

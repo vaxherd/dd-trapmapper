@@ -43,6 +43,7 @@ function refreshEditBox(trap)
         dom_edit_hoard.classList.add("hidden");
         dom_edit_hoard_add_holder.classList.remove("hidden");
     }
+    dom_edit_index.value = trap.index;
 }
 
 
@@ -428,6 +429,21 @@ class TrapMap
         return trap;
     }
 
+    /* Set the index for the given trap.  If another trap in the same room
+     * already has that index, swap it with the given trap. */
+    setTrapIndex(trap, index)
+    {
+        const [room, list_index] = this._findTrap(trap);
+        const traps = this.room_traps.get(room);
+        for (var i = 0; i < traps.length; i++) {
+            if (traps[i] !== trap && traps[i].index == index) {
+                traps[i].setIndex(trap.index);
+                break;
+            }
+        }
+        trap.setIndex(index);
+    }
+
     /* Reassign the given trap to the nearest room.  Should be called
      * after moving a trap to a new position. */
     rePlaceTrap(trap)
@@ -643,6 +659,7 @@ const dom_edit_image_add_holder = document.getElementById("edit_image_add_holder
 const dom_edit_hoard = document.getElementById("edit_hoard");
 const dom_edit_hoard_img = document.getElementById("edit_hoard_img");
 const dom_edit_hoard_add_holder = document.getElementById("edit_hoard_add_holder");
+const dom_edit_index = document.getElementById("edit_index");
 const dom_img_load = document.getElementById("img_load");
 
 // Create base canvas.
@@ -679,6 +696,7 @@ document.getElementById("edit_image3_delete").addEventListener("click", function
 document.getElementById("edit_image_add").addEventListener("click", onAddTrapImage);
 document.getElementById("edit_hoard_delete").addEventListener("click", onDeleteHoardImage);
 document.getElementById("edit_hoard_add").addEventListener("click", onAddHoardImage);
+dom_edit_index.addEventListener("change", onSetTrapIndex);
 document.getElementById("edit_delete").addEventListener("click", onDeleteTrap);
 
 // Initialize editing state.
@@ -798,7 +816,12 @@ function onMouseDown(e)
 {
     // Normally these will already be set by the mouse-move event, but if
     // the user clicks before ever moving the mouse, we need to initialize
-    // these ourselves for proper trap placement.
+    // these ourselves for proper trap placement.  (But watch out for
+    // invalid data, as appears to happen when clicking on a <select>
+    // dropdown.)
+    if (e.clientX == 0 && e.clientY == 0) {
+        return;
+    }
     mouse_x = e.clientX;
     mouse_y = e.clientY;
     [bg_x, bg_y] = map.fromGlobal(mouse_x, mouse_y);
@@ -812,9 +835,14 @@ function onMouseDown(e)
         const edit_rect = dom_editbox.getBoundingClientRect();
         if (mouse_x < edit_rect.left || mouse_x > edit_rect.right
          || mouse_y < edit_rect.top || mouse_y > edit_rect.bottom) {
-            dom_editbox.classList.add("hidden");
-            edit_trap.setHover(false);
-            edit_trap = null;
+            // Index dropdown could extend outside the box.
+            const index_rect = dom_edit_index.getBoundingClientRect();
+            if (mouse_x < index_rect.left || mouse_x > index_rect.right
+             || mouse_y < index_rect.top || mouse_y > index_rect.bottom) {
+                dom_editbox.classList.add("hidden");
+                edit_trap.setHover(false);
+                edit_trap = null;
+            }
         }
         return;
     }
@@ -988,6 +1016,15 @@ function onDeleteHoardImage(e)
 {
     edit_trap.setHoard(null);
     refreshEditBox(edit_trap);
+}
+
+
+function onSetTrapIndex(e)
+{
+    const index = dom_edit_index.value;
+    if (index != edit_trap.index) {
+        map.setTrapIndex(edit_trap, dom_edit_index.value);
+    }
 }
 
 
