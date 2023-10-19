@@ -737,6 +737,9 @@ var mouse_x = two.width/2;
 var mouse_y = two.height/2;
 var bg_x = map.width/2;
 var bg_y = map.height/2;
+var mclick_x;   // Coordinates of middle-mouse-button-down event
+var mclick_y;
+var mclick_ts;  // Timestamp of MMB-down event (for click/drag detection)
 window.addEventListener("mousemove", onMouseMove);
 window.addEventListener("mousedown", onMouseDown);
 window.addEventListener("mouseup", onMouseUp);
@@ -791,6 +794,13 @@ function onMouseMove(e)
 
     if (e.buttons & 4) {
         map.adjustPosition(e.movementX, e.movementY);
+        if (mclick_ts) {
+            const drag_epsilon = 5;
+            const limit2 = drag_epsilon * drag_epsilon;
+            if (distance2(mclick_x, mclick_y, mouse_x, mouse_y) > limit2) {
+                mclick_ts = null;
+            }
+        }
     }
 
     if (e.buttons & 1) {
@@ -923,10 +933,9 @@ function onMouseDown(e)
 
     } else if (e.button == 1) {
         if (!edit_rooms && !edit_trap && mouse_trap) {
-            dom_popup_image.classList.add("hidden");
-            edit_trap = mouse_trap;
-            refreshEditBox(edit_trap);
-            dom_editbox.classList.remove("hidden");
+            mclick_x = mouse_x;
+            mclick_y = mouse_y;
+            mclick_ts = Date.now();
         }
     }
 }
@@ -945,6 +954,14 @@ function onMouseUp(e)
             two.update();
             mouse_trap = clicked_trap;
             clicked_trap = null;
+        }
+
+    } else if (e.button == 1) {
+        if (mclick_ts && Date.now() - mclick_ts < 300) {
+            dom_popup_image.classList.add("hidden");
+            edit_trap = mouse_trap;
+            refreshEditBox(edit_trap);
+            dom_editbox.classList.remove("hidden");
         }
     }
 }
