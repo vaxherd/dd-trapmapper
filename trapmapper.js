@@ -94,11 +94,17 @@ function loadFile(callback)
  * returned due to web API limitations.) */
 function saveFile(data, pathname)
 {
-    const fs_save = document.getElementById("fs_save");
+    // FIXME: If we try to use the precreated <a> element, Firefox tries to
+    // save again every time we trigger the img_load element - browser bug?
+    // Use a temporary element as a workaround
+    //const fs_save = document.getElementById("fs_save");
+    const fs_save = document.createElement("a"); document.getElementById("hidden").appendChild(fs_save);
     const file = new File([data], "", {type: "text/plain"});
     fs_save.href = window.URL.createObjectURL(file);
     fs_save.setAttribute("download", pathname || "map.json");
     fs_save.click();
+    // FIXME: as above
+    document.getElementById("hidden").removeChild(fs_save);
 }
 
 ////////////////////////////////////////////////////////////////////////
