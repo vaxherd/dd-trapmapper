@@ -771,6 +771,7 @@ const dom_img_load = document.getElementById("img_load");
 const two = new Two({type: Two.Types.canvas,
                      fullscreen: true});
 two.appendTo(dom_container);
+two.addEventListener("resize", function() {two.render();});
 
 // Configure various element sizes based on the canvas size.
 setImageSize(dom_popup_image_img, 1/3);
