@@ -562,12 +562,12 @@ class TrapMap
         if (edit_rooms) {
             this.trap_group.opacity = 0.5;
             this.hoard_group.opacity = 0.5;
-            this.index_group.opacity = visible ? 0.5 : 0.0;
+            this.index_group.opacity = this.indexes_visible ? 0.5 : 0.0;
             this.room_group.opacity = 1.0;
         } else {
             this.trap_group.opacity = 1.0;
             this.hoard_group.opacity = 1.0;
-            this.index_group.opacity = visible ? 1.0 : 0.0;
+            this.index_group.opacity = this.indexes_visible ? 1.0 : 0.0;
             this.room_group.opacity = 0.0;
         }
     }
@@ -658,7 +658,7 @@ class TrapMap
             if ((i%5 == 0 || i%5 == 4) && (i < 10 || i >= 40)) {
                 // Corner room, ignore.
             } else {
-                const icon = new Two.Circle(center[0], center[1], 30, 32);
+                const icon = new Two.Circle(0, 0, 30, 32);
                 icon.noStroke().fill = "rgba(255, 255, 255, 0.75)";
                 var rx = i % 10;
                 var ry = Math.trunc(i / 10);
@@ -670,8 +670,16 @@ class TrapMap
                     prefix = "A";
                 }
                 const id = prefix + (ry+1) + (rx+1);
-                this_.room_icons.set(id, icon);
-                this_.room_group.add(icon);
+                const label = new Two.Text(id, 0, 1);
+                label.family = window.getComputedStyle(document.querySelector("body")).getPropertyValue("font-family");
+                label.weight = 700;
+                label.size = 25;
+                label.noStroke().fill = "rgba(0, 0, 0, 1.0)";
+                const group = new Two.Group(icon, label);
+                group.position.x = center[0];
+                group.position.y = center[1];
+                this_.room_icons.set(id, group);
+                this_.room_group.add(group);
             }
         });
     }
