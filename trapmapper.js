@@ -10,11 +10,11 @@ function distance2(x1, y1, x2, y2)
 }
 
 
-/* Set the size of an <IMG> element to a width 20% of the screen width and
- * a height assuming a 16:9 aspect ratio. */
-function setImageSize(img)
+/* Set the size of an <IMG> element to a width `width_ratio` (e.g. 0.2) of
+ * the screen width and a height assuming a 16:9 aspect ratio. */
+function setImageSize(img, width_ratio)
 {
-    img.width = two.width * 0.2;
+    img.width = two.width * width_ratio;
     img.height = img.width * (9/16);
 }
 
@@ -760,9 +760,9 @@ const two = new Two({type: Two.Types.canvas,
 two.appendTo(dom_container);
 
 // Configure various element sizes based on the canvas size.
-setImageSize(dom_popup_image_img);
-dom_edit_image_img.forEach(function(elem) {setImageSize(elem);});
-setImageSize(dom_edit_hoard_img);
+setImageSize(dom_popup_image_img, 1/3);
+dom_edit_image_img.forEach(function(elem) {setImageSize(elem, 0.2);});
+setImageSize(dom_edit_hoard_img, 0.2);
 
 // Initialize map and trap data.
 const map = new TrapMap();
@@ -901,7 +901,7 @@ function onMouseMove(e)
                         const [tx, ty] = map.toGlobal(trap.x, trap.y);
                         const offset = 15*1.3*map.scale() + 5;
                         var left;
-                        if (tx > two.width*0.75) {
+                        if (tx > two.width*0.6) {
                             left = tx - offset - (dom_popup_image_img.width + 4);
                         } else {
                             left = tx + offset;
