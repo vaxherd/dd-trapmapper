@@ -278,6 +278,9 @@ class TrapMap
     /* Source image location */
     DEFAULT_SRC = "./data/default-bg.png";
     src = "";
+    /* Image size (for convenience) */
+    width = 0;
+    height = 0;
     /* Coordinates of room centers: list of 50 coordinate pairs, row-major.
      * Corner rooms (A11, A15, ...) are ignored */
     DEFAULT_ROOMS = [
@@ -294,6 +297,15 @@ class TrapMap
     rooms = this.DEFAULT_ROOMS.slice();
     /* List of traps (Trap instances) per room, indexed by room ID */
     room_traps = new Map();
+    /* Should the index icons be displayed? */
+    indexes_visible = false;
+    /* Trap which is currently in hover state (null if none) */
+    hover_trap = null;
+    /* Index in icon group child arrays of hover_trap's icons, for
+     * Z-reordering.  (This is apparently the sanctioned way to manipulate
+     * rendering order; see <https://github.com/jonobr1/two.js/issues/245>) */
+    hover_trap_index = -1;
+
     /* Two.Group encapsulating all graphic objects (for scrolling/zooming) */
     root_group = null;
     /* Image (Two.Sprite) instance */
@@ -304,15 +316,10 @@ class TrapMap
     hoard_group = null;
     /* Two.Group containing trap index icons */
     index_group = null;
-    /* Should the index icons be displayed? */
-    indexes_visible = false;
     /* List of room center icons, indexed by room ID */
     room_icons = new Map();
     /* Two.Group containing room center icons */
     room_group = null;
-    /* Image size (for convenience) */
-    width = 0;
-    height = 0;
 
     constructor()
     {
@@ -547,6 +554,39 @@ class TrapMap
         this.trap_group.remove(trap.icon);
         this.hoard_group.remove(trap.icon_hoard);
         this.index_group.remove(trap.icon_index);
+        if (this.hover_trap === trap) {
+            this.hover_trap = null;
+        }
+    }
+
+    /* Mark the given trap as in "hover" state (enlarged and placed on top
+     * of all others).  Pass null to clear any currently hovered trap. */
+    setHoverTrap(trap)
+    {
+        if (this.hover_trap) {
+            this.hover_trap.setHover(false);
+            this.trap_group.remove(this.hover_trap.icon);
+            this.hoard_group.remove(this.hover_trap.icon_hoard);
+            this.index_group.remove(this.hover_trap.icon_index);
+            this.trap_group.children.splice(this.hover_trap_index, 0,
+                                            this.hover_trap.icon);
+            this.hoard_group.children.splice(this.hover_trap_index, 0,
+                                             this.hover_trap.icon_hoard);
+            this.index_group.children.splice(this.hover_trap_index, 0,
+                                             this.hover_trap.icon_index);
+        }
+        this.hover_trap = trap;
+        if (trap) {
+            trap.setHover(true);
+            this.hover_trap_index = this.trap_group.children.indexOf(trap.icon);
+            console.assert(this.hover_trap_index >= 0);
+            this.trap_group.remove(trap.icon);
+            this.hoard_group.remove(trap.icon_hoard);
+            this.index_group.remove(trap.icon_index);
+            this.trap_group.add(trap.icon);  // added to end, i.e. on top
+            this.hoard_group.add(trap.icon_hoard);
+            this.index_group.add(trap.icon_index);
+        }
     }
 
     /* Toggle trap index numbers on or off. */
@@ -898,11 +938,10 @@ function onMouseMove(e)
             }
             if (mouse_trap !== trap) {
                 if (mouse_trap) {
-                    mouse_trap.setHover(false);
                     dom_popup_image.classList.add("hidden");
                 }
+                map.setHoverTrap(trap);
                 if (trap) {
-                    trap.setHover(true);
                     var image;
                     if (trap.images.length) {
                         image = map.basePath + trap.images[0];
@@ -967,7 +1006,8 @@ function onMouseDown(e)
             if (mouse_x < index_rect.left || mouse_x > index_rect.right
              || mouse_y < index_rect.top || mouse_y > index_rect.bottom) {
                 dom_editbox.classList.add("hidden");
-                edit_trap.setHover(false);
+                map.setHoverTrap(null);
+                two.update();
                 edit_trap = null;
             }
         }
@@ -981,7 +1021,7 @@ function onMouseDown(e)
                 clicked_trap = mouse_trap;
             } else {
                 clicked_trap = map.addTrap(bg_x, bg_y);
-                clicked_trap.setHover(true);
+                map.setHoverTrap(clicked_trap);
             }
             clicked_trap.setDrag(true);
             two.update();
