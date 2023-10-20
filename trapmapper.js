@@ -152,7 +152,7 @@ class Trap
         this.room_y = room_y;
         this.index = index;
 
-        this._icon_base = new Two.Circle(0, 0, 8, 32);
+        this._icon_base = new Two.Circle(0, 0, this.iconSize(), 32);
         this._icon_base.fill = window.getComputedStyle(dom_edit_color[0]).getPropertyValue("background-color");
         this._icon_base.stroke = "rgb(0, 0, 0, 0.25)";
         this._icon_base.linewidth = 0.5;
@@ -178,6 +178,12 @@ class Trap
         this.icon_hoard.position.y = y;
         this.icon_index.position.x = x;
         this.icon_index.position.y = y+1;
+    }
+
+    /* Return the radius of the icon, in background image coordinates. */
+    iconSize()
+    {
+        return this.wall_trap ? 15 : 8;
     }
 
     /* Set whether to display the icon in "hover" state (enlarged). */
@@ -256,7 +262,7 @@ class Trap
     {
         this.wall_trap = wall_trap;
         this.wall_closed = wall_trap && wall_closed;
-        this._icon_base.radius = this.wall_trap ? 15 : 8;
+        this._icon_base.radius = this.iconSize();
         this._icon_wall.opacity = this.wall_closed ? 1.0 : 0.0;
     }
 }
@@ -877,7 +883,7 @@ function onMouseMove(e)
             var trap = map.getTrap(bg_x, bg_y);
             if (trap) {
                 const dist = distance2(bg_x, bg_y, trap.x, trap.y) ** 0.5;
-                if (dist > 15*1.3 + 5/map.scale()) {
+                if (dist > trap.iconSize()*1.3 + 5/map.scale()) {
                     trap = null;
                 }
             }
@@ -899,9 +905,9 @@ function onMouseMove(e)
                     if (image) {
                         dom_popup_image_img.src = image;
                         const [tx, ty] = map.toGlobal(trap.x, trap.y);
-                        const offset = 15*1.3*map.scale() + 5;
+                        const offset = (trap.iconSize()*1.3 * map.scale()) + 5;
                         var left;
-                        if (tx > two.width*0.6) {
+                        if (tx+offset > two.width*0.6) {
                             left = tx - offset - (dom_popup_image_img.width + 4);
                         } else {
                             left = tx + offset;
