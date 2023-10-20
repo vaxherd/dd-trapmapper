@@ -153,7 +153,9 @@ class Trap
         this.index = index;
 
         this._icon_base = new Two.Circle(0, 0, 8, 32);
-        this._icon_base.noStroke().fill = window.getComputedStyle(dom_edit_color[0]).getPropertyValue("background-color");
+        this._icon_base.fill = window.getComputedStyle(dom_edit_color[0]).getPropertyValue("background-color");
+        this._icon_base.stroke = "rgb(0, 0, 0, 0.25)";
+        this._icon_base.linewidth = 0.5;
         this._icon_base.opacity = 0.5;
         this._icon_wall = new Two.Circle(0, 0, 10, 32);
         this._icon_wall.noFill().stroke = "rgb(0, 0, 0)";
