@@ -152,7 +152,7 @@ class Trap
         this.room_y = room_y;
         this.index = index;
 
-        this._icon_base = new Two.Circle(0, 0, 10, 32);
+        this._icon_base = new Two.Circle(0, 0, 8, 32);
         this._icon_base.noStroke().fill = window.getComputedStyle(dom_edit_color[0]).getPropertyValue("background-color");
         this._icon_base.opacity = 0.5;
         this._icon_wall = new Two.Circle(0, 0, 10, 32);
@@ -160,13 +160,13 @@ class Trap
         this._icon_wall.linewidth = 2.5;
         this._icon_wall.opacity = 0;
         this.icon = new Two.Group(this._icon_base, this._icon_wall);
-        this.icon_hoard = new Two.Circle(0, 0, 3.5, 32);
+        this.icon_hoard = new Two.Circle(0, 0, 3, 32);
         this.icon_hoard.noStroke().fill = "rgba(255, 255, 0, 1.0)";
         this.icon_hoard.opacity = 0;
         this.icon_index = new Two.Text(this.index, 0, 1);
         this.icon_index.family = window.getComputedStyle(document.querySelector("body")).getPropertyValue("font-family");
         this.icon_index.weight = 700;
-        this.icon_index.size = 20;
+        this.icon_index.size = 15;
         this.icon_index.fill = "rgba(255, 255, 255, 1.0)";
         this.icon_index.stroke = "rgba(0, 0, 0, 1.0)";
 
@@ -175,7 +175,7 @@ class Trap
         this.icon_hoard.position.x = x;
         this.icon_hoard.position.y = y;
         this.icon_index.position.x = x;
-        this.icon_index.position.y = y;
+        this.icon_index.position.y = y+1;
     }
 
     /* Set whether to display the icon in "hover" state (enlarged). */
@@ -202,7 +202,7 @@ class Trap
         this.icon_hoard.position.x = this.x;
         this.icon_hoard.position.y = this.y;
         this.icon_index.position.x = this.x;
-        this.icon_index.position.y = this.y;
+        this.icon_index.position.y = this.y+1;
     }
 
     /* Add a trap image.  Updates the trap icon if this is the first image. */
@@ -254,7 +254,7 @@ class Trap
     {
         this.wall_trap = wall_trap;
         this.wall_closed = wall_trap && wall_closed;
-        this._icon_base.radius = this.wall_trap ? 15 : 10;
+        this._icon_base.radius = this.wall_trap ? 15 : 8;
         this._icon_wall.opacity = this.wall_closed ? 1.0 : 0.0;
     }
 }
@@ -296,6 +296,8 @@ class TrapMap
     hoard_group = null;
     /* Two.Group containing trap index icons */
     index_group = null;
+    /* Should the index icons be displayed? */
+    indexes_visible = false;
     /* List of room center icons, indexed by room ID */
     room_icons = new Map();
     /* Two.Group containing room center icons */
@@ -320,6 +322,7 @@ class TrapMap
         this.trap_group = new Two.Group();
         this.hoard_group = new Two.Group();
         this.index_group = new Two.Group();
+        this.index_group.opacity = 0.0;
         this.root_group.add(this.trap_group, this.hoard_group,
                             this.index_group);
         this._initRoomIcons();
@@ -361,6 +364,7 @@ class TrapMap
         this.trap_group = new Two.Group();
         this.hoard_group = new Two.Group();
         this.index_group = new Two.Group();
+        this.index_group.opacity = this.indexes_visible ? 1.0 : 0.0;
         this.root_group.add(this.trap_group, this.hoard_group,
                             this.index_group);
         this.room_traps = new Map();
@@ -540,6 +544,7 @@ class TrapMap
     /* Toggle trap index numbers on or off. */
     setTrapIndexVisible(visible)
     {
+        this.indexes_visible = visible;
         this.index_group.opacity = visible ? 1.0 : 0.0;
     }
 
@@ -549,13 +554,13 @@ class TrapMap
         if (edit_rooms) {
             this.trap_group.opacity = 0.5;
             this.hoard_group.opacity = 0.5;
-            this.index_group.opacity = 0.5;
-            this.room_group.opacity = 1;
+            this.index_group.opacity = visible ? 0.5 : 0.0;
+            this.room_group.opacity = 1.0;
         } else {
-            this.trap_group.opacity = 1;
-            this.hoard_group.opacity = 1;
-            this.index_group.opacity = 1;
-            this.room_group.opacity = 0;
+            this.trap_group.opacity = 1.0;
+            this.hoard_group.opacity = 1.0;
+            this.index_group.opacity = visible ? 1.0 : 0.0;
+            this.room_group.opacity = 0.0;
         }
     }
 
