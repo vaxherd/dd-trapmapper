@@ -914,14 +914,19 @@ function onMouseMove(e)
                         dom_popup_image_img.src = image;
                         const [tx, ty] = map.toGlobal(trap.x, trap.y);
                         const offset = (trap.iconSize()*1.3 * map.scale()) + 5;
-                        var left;
+                        var left, top;
                         if (tx+offset > two.width*0.6) {
                             left = tx - offset - (dom_popup_image_img.width + 4);
                         } else {
                             left = tx + offset;
                         }
+                        if (ty+offset > two.height*0.6) {
+                            top = ty - (dom_popup_image_img.height + 4);
+                        } else {
+                            top = ty;
+                        }
                         dom_popup_image.style.left = left + "px";
-                        dom_popup_image.style.top = ty + "px";
+                        dom_popup_image.style.top = top + "px";
                         dom_popup_image.classList.remove("hidden");
                     }
                 }
