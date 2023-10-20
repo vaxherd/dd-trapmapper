@@ -769,8 +769,7 @@ const dom_img_load = document.getElementById("img_load");
 
 // Create base canvas.
 const two = new Two({type: Two.Types.canvas,
-                     fullscreen: true,
-                     autostart: true});
+                     fullscreen: true});
 two.appendTo(dom_container);
 
 // Configure various element sizes based on the canvas size.
@@ -845,6 +844,7 @@ function onMouseMove(e)
 
     if (e.buttons & 4) {
         map.adjustPosition(e.movementX, e.movementY);
+        two.update();
         if (mclick_ts) {
             const drag_epsilon = 5;
             const limit2 = drag_epsilon * drag_epsilon;
