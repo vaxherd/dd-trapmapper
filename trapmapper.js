@@ -678,6 +678,14 @@ class TrapMap
                 this_.index_group.add(trap.icon_index);
             });
             this.room_traps.set(room, traps);
+            // Ensure all trap indexes are valid
+            traps.forEach(function(trap) {
+                var index = trap.index - 0;  // Force to numeric type
+                if (isNaN(index)) {
+                    index = this_._getTrapIndex(room)[1];
+                }
+                trap.setIndex(index);
+            });
         }
         this._initRoomIcons();
     }
@@ -1196,7 +1204,8 @@ function onSetTrapIndex(e)
 {
     const index = dom_edit_index.value;
     if (index != edit_trap.index) {
-        map.setTrapIndex(edit_trap, dom_edit_index.value);
+        const index = dom_edit_index.value - 0;  // Force to numeric type
+        map.setTrapIndex(edit_trap, index);
     }
 }
 
