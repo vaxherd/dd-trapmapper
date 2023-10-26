@@ -190,6 +190,8 @@ class Trap
     setHover(hover)
     {
         this.icon.scale = hover ? 1.3 : 1.0;
+        this.icon_hoard.scale = hover ? 1.3 : 1.0;
+        this.icon_index.scale = hover ? 1.3 : 1.0;
     }
 
     /* Set whether to display the icon in "drag" state (translucent). */
