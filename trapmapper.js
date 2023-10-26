@@ -299,6 +299,8 @@ class TrapMap
     rooms = this.DEFAULT_ROOMS.slice();
     /* List of traps (Trap instances) per room, indexed by room ID */
     room_traps = new Map();
+    /* Should the hoard icons be displayed? */
+    hoards_visible = true;
     /* Should the index icons be displayed? */
     indexes_visible = false;
     /* Trap which is currently in hover state (null if none) */
@@ -380,6 +382,7 @@ class TrapMap
         this.root_group.remove(this.index_group);
         this.trap_group = new Two.Group();
         this.hoard_group = new Two.Group();
+        this.hoard_group.opacity = this.hoards_visible ? 1.0 : 0.0;
         this.index_group = new Two.Group();
         this.index_group.opacity = this.indexes_visible ? 1.0 : 0.0;
         this.root_group.add(this.trap_group, this.hoard_group,
@@ -591,6 +594,13 @@ class TrapMap
         }
     }
 
+    /* Toggle hoard icons on or off. */
+    setHoardVisible(visible)
+    {
+        this.hoards_visible = visible;
+        this.hoard_group.opacity = visible ? 1.0 : 0.0;
+    }
+
     /* Toggle trap index numbers on or off. */
     setTrapIndexVisible(visible)
     {
@@ -598,17 +608,17 @@ class TrapMap
         this.index_group.opacity = visible ? 1.0 : 0.0;
     }
 
-    /* Toggle room/trap icon opacity depending on edit mode. */
+    /* Update room/trap icon opacity depending on edit mode. */
     setEditRoomsMode(edit_rooms)
     {
         if (edit_rooms) {
             this.trap_group.opacity = 0.5;
-            this.hoard_group.opacity = 0.5;
+            this.hoard_group.opacity = this.hoards_visible ? 0.5 : 0.0;
             this.index_group.opacity = this.indexes_visible ? 0.5 : 0.0;
             this.room_group.opacity = 1.0;
         } else {
             this.trap_group.opacity = 1.0;
-            this.hoard_group.opacity = 1.0;
+            this.hoard_group.opacity = this.hoards_visible ? 1.0 : 0.0;
             this.index_group.opacity = this.indexes_visible ? 1.0 : 0.0;
             this.room_group.opacity = 0.0;
         }
@@ -891,6 +901,7 @@ dom_edit_wall.addEventListener("change", onSetWallTrap);
 document.getElementById("edit_delete").addEventListener("click", onDeleteTrap);
 
 // Initialize editing state.
+var show_hoards = true;   // Show hoard icons?
 var show_indexes = false; // Show trap index numbers?
 var mouse_trap = null;    // Trap over which the mouse is hovering
 var clicked_trap = null;  // Trap which is currently grabbed
@@ -1183,6 +1194,11 @@ function onKeyPress(e)
 
     } else if (e.key == "S") {  // shift-S
         saveFile(map.serialize(), map_pathname);
+
+    } else if (e.key == "Y") {  // shift-Y
+        show_hoards = !show_hoards;
+        map.setHoardVisible(show_hoards);
+        two.update();
 
     } else if (e.key == "#") {
         show_indexes = !show_indexes;

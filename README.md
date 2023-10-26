@@ -50,10 +50,12 @@ different room, the trap will get a new index based on the new room.
 **Editing trap data:**  Middle-click a trap to edit its data.  Up to 3
 trap screenshots and 1 hoard screenshot can be attached to a trap; when
 hovering over a trap, the first trap screenshot (if any), otherwise the
-hoard screenshot (if any), is shown in a pop-up.  The trap index number
-and icon color can also be changed, and the trap can also be marked as a
-wall trap or conditional wall trap (in the case where a trap is a wall
-trap only when the corridor to the next room is blocked off).
+hoard screenshot (if any), is shown in a pop-up.  Trap locations with
+hoard screenshots attached are indicated with a yellow dot over the trap
+icon; this can be toggled on and off with `Shift+Y`.  The trap index
+number and icon color can also be changed, and the trap can also be
+marked as a wall trap or conditional wall trap (in the case where a trap
+is a wall trap only when the corridor to the next room is blocked off).
 
 **Deleting traps:**  Click the "Delete trap" button while editing trap
 data.  Note that there is **NO** confirmation before the trap is
