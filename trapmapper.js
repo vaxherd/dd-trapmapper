@@ -138,6 +138,8 @@ class Trap
     icon_hoard = null;
     /* Index overlay (Two.Shape) */
     icon_index = null;
+    /* Show the hoard icon? */
+    hoard_visible = true;
 
     /* Base trap icon (internal) */
     _icon_base = null;
@@ -219,7 +221,7 @@ class Trap
     addImage(filename)
     {
         this.images.push(filename);
-        this._icon_base.opacity = 1.0;
+        this._updateIconOpacity();
     }
 
     /* Delete a trap image.  Updates the trap icon if no images are left. */
@@ -228,9 +230,7 @@ class Trap
         console.assert(index >= 0);
         console.assert(index < this.images.length);
         this.images.splice(index, 1);
-        if (this.images.length == 0) {
-            this._icon_base.opacity = 0.5;
-        }
+        this._updateIconOpacity();
     }
 
     /* Set the hoard image (null to clear any previously set image).
@@ -238,7 +238,7 @@ class Trap
     setHoard(filename)
     {
         this.hoard = filename;
-        this.icon_hoard.opacity = filename ? 1.0 : 0.0;
+        this._updateIconOpacity();
     }
 
     /* Set the numeric index for this trap.  Updates the icon appropriately. */
@@ -265,7 +265,29 @@ class Trap
         this.wall_trap = wall_trap;
         this.wall_closed = wall_trap && wall_closed;
         this._icon_base.radius = this.iconSize();
+        this._updateIconOpacity();
+    }
+
+    /* Set whether to display the hoard icon.  When enabled, a trap with
+     * no trap image will be displayed with lower opacity on the base icon. */
+    setHoardVisible(visible)
+    {
+        this.hoard_visible = visible;
+        this._updateIconOpacity();
+    }
+
+    /* Update opacity of trap icon images.  Internal routine. */
+    _updateIconOpacity()
+    {
+        if (!this.hoard_visible || this.images.length > 0) {
+            this._icon_base.opacity = 1.0;
+        } else if (this.hoard) {
+            this._icon_base.opacity = 0.2;
+        } else {
+            this._icon_base.opacity = 0.5;
+        }
         this._icon_wall.opacity = this.wall_closed ? 1.0 : 0.0;
+        this.icon_hoard.opacity = this.hoard && this.hoard_visible ? 1.0 : 0.0;
     }
 }
 
@@ -512,6 +534,7 @@ class TrapMap
         const [room, room_x, room_y] = this.roomId(x, y, true);
         const [traps, index] = this._getTrapIndex(room);
         const trap = new Trap(x, y, x-room_x, y-room_y, index);
+        trap.setHoardVisible(this.hoards_visible);
         traps.push(trap);
         this.trap_group.add(trap.icon);
         this.hoard_group.add(trap.icon_hoard);
@@ -598,7 +621,9 @@ class TrapMap
     setHoardVisible(visible)
     {
         this.hoards_visible = visible;
-        this.hoard_group.opacity = visible ? 1.0 : 0.0;
+        this.forEachTrap(function(trap) {
+            trap.setHoardVisible(visible);
+        });
     }
 
     /* Toggle trap index numbers on or off. */
@@ -613,12 +638,12 @@ class TrapMap
     {
         if (edit_rooms) {
             this.trap_group.opacity = 0.5;
-            this.hoard_group.opacity = this.hoards_visible ? 0.5 : 0.0;
+            this.hoard_group.opacity = 0.5;
             this.index_group.opacity = this.indexes_visible ? 0.5 : 0.0;
             this.room_group.opacity = 1.0;
         } else {
             this.trap_group.opacity = 1.0;
-            this.hoard_group.opacity = this.hoards_visible ? 1.0 : 0.0;
+            this.hoard_group.opacity = 1.0;
             this.index_group.opacity = this.indexes_visible ? 1.0 : 0.0;
             this.room_group.opacity = 0.0;
         }
@@ -711,6 +736,7 @@ class TrapMap
                 trap.setHoard(hoard);
                 trap.setColor(color);
                 trap.setWallTrap(wall_trap, wall_closed);
+                trap.setHoardVisible(this_.hoards_visible);
                 traps.push(trap);
                 this_.trap_group.add(trap.icon);
                 this_.hoard_group.add(trap.icon_hoard);
