@@ -1214,6 +1214,7 @@ function onAddTrapImage(e)
         const file = dom_img_load.files[0];
         if (file) {
             edit_trap.addImage(file.name);
+            two.update();
             refreshEditBox(edit_trap);
         }
     };
@@ -1224,6 +1225,7 @@ function onAddTrapImage(e)
 function onDeleteTrapImage(index, e)
 {
     edit_trap.deleteImage(index);
+    two.update();
     refreshEditBox(edit_trap);
 }
 
@@ -1234,6 +1236,7 @@ function onAddHoardImage(e)
         const file = dom_img_load.files[0];
         if (file) {
             edit_trap.setHoard(file.name);
+            two.update();
             refreshEditBox(edit_trap);
         }
     };
@@ -1244,6 +1247,7 @@ function onAddHoardImage(e)
 function onDeleteHoardImage(e)
 {
     edit_trap.setHoard(null);
+    two.update();
     refreshEditBox(edit_trap);
 }
 
@@ -1254,6 +1258,7 @@ function onSetTrapIndex(e)
     if (index != edit_trap.index) {
         const index = dom_edit_index.value - 0;  // Force to numeric type
         map.setTrapIndex(edit_trap, index);
+        two.update();
     }
 }
 
@@ -1261,6 +1266,7 @@ function onSetTrapIndex(e)
 function onSetColor(color, e)
 {
     edit_trap.setColor(color);
+    two.update();
     refreshEditBox(edit_trap);
 }
 
@@ -1274,6 +1280,7 @@ function onSetWallTrap(e)
     } else {
         edit_trap.setWallTrap(true, false);
     }
+    two.update();
     refreshEditBox(edit_trap);
 }
 
@@ -1281,6 +1288,7 @@ function onSetWallTrap(e)
 function onDeleteTrap(e)
 {
     map.removeTrap(edit_trap);
+    two.update();
     dom_editbox.classList.add("hidden");
     edit_trap = null;
 }
