@@ -634,6 +634,33 @@ class TrapMap
         });
     }
 
+    /* Export the image to a file. */
+    export()
+    {
+        const canvas = document.createElement("canvas");
+        document.getElementById("hidden").appendChild(canvas);
+        canvas.setAttribute("width", this.width);
+        canvas.setAttribute("height", this.height);
+        const renderer = new Two({domElement: canvas,
+                                  width: this.width, height: this.height});
+        const {x, y} = this.root_group.position;
+        const scale = this.root_group.scale;
+        two.remove(this.root_group);
+        this.root_group.position.x = 0;
+        this.root_group.position.y = 0;
+        this.root_group.scale = 1;
+        renderer.add(this.root_group);
+        renderer.render();
+        window.open(canvas.toDataURL("image/png"));
+        renderer.remove(this.root_group);
+        this.root_group.position.x = x;
+        this.root_group.position.y = y;
+        this.root_group.scale = scale;
+        two.add(this.root_group);
+        two.update();
+        document.getElementById("hidden").removeChild(canvas);
+    }
+
     /* Serialize map/trap data into a string. */
     serialize()
     {
@@ -1141,6 +1168,9 @@ function onKeyPress(e)
             }
         };
         dom_img_load.click();
+
+    } else if (e.key == "P") {  // shift-P
+        map.export();
 
     } else if (e.key == "R") {  // shift-R
         if (!edit_rooms) {

@@ -66,6 +66,12 @@ to load a previously saved map.  Note that it is not possible to load a
 map using (for example) a URL query parameter due to browser security
 restrictions.
 
+**Exporting the map image:**  Press `Shift+P` to export the current map
+to a PNG file.  The image will be created at the same resolution as the
+map background image.  The generated image will open in a new browser
+window (or tab, depending on your browser settings); you may need to set
+your browser to allow pop-up windows for this to work.
+
 
 Caveats
 -------
