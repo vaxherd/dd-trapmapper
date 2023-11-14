@@ -729,6 +729,8 @@ class TrapMap
         for (var room in data.traps) {
             const [cx, cy] = this.roomCenter(room);
             var traps = [];
+            // Sort traps on load so lower indexes are rendered on top
+            data.traps[room].sort((a, b) => b.index - a.index);
             data.traps[room].forEach(function(trap_data) {
                 const {x, y, index, color, images, hoard,
                        wall_trap, wall_closed} = trap_data;
@@ -753,6 +755,7 @@ class TrapMap
                 trap.setIndex(index);
             });
         }
+        // Sort trap icons so lower indexes are on top
         this._initRoomIcons();
     }
 
