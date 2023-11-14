@@ -202,13 +202,17 @@ class Trap
         this.icon.opacity = drag ? 0.4 : 1.0;
     }
 
-    /* Move trap by the given amount, in background image coordinates. */
-    move(dx, dy)
+    /* Move trap by the given amount, in background image coordinates.
+     * If with_room is true, the room-relative coordinates are left unchanged
+     * (for the case in which the room is also moving). */
+    move(dx, dy, with_room=false)
     {
         this.x += dx;
         this.y += dy;
-        this.room_x += dx;
-        this.room_y += dy;
+        if (!with_room) {
+            this.room_x += dx;
+            this.room_y += dy;
+        }
         this.icon.position.x = this.x;
         this.icon.position.y = this.y;
         this.icon_hoard.position.x = this.x;
@@ -662,10 +666,7 @@ class TrapMap
         icon.position.y += dy;
         const traps = this.room_traps.get(room_id) || [];
         traps.forEach(function(trap) {
-            trap.x += dx;
-            trap.y += dy;
-            trap.icon.position.x += dx;
-            trap.icon.position.y += dy;
+            trap.move(dx, dy, true);
         });
     }
 
